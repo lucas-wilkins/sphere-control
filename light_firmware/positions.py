@@ -1,4 +1,8 @@
+from collections import defaultdict
+
 import numpy as np
+
+import matplotlib.pyplot as plt
 
 # Note about orientation
 
@@ -203,6 +207,72 @@ led_angles = [
 	[0.0, 15.858765265031135],
 	[0.0, 0.0]]
 
+# Map led type
+led_types = []
+for angles in led_angles:
+    if np.allclose(angles, [0,0]):
+        led_types.append(1)
+    elif np.allclose(angles, [90, 0], atol=1e-5) or np.allclose(angles, [-90, 0], atol=1e-5):
+        led_types.append(2)
+    elif np.isclose(angles[0], 0) and -0.0001 <= angles[1] <= 90.0001:
+        led_types.append(-1)
+    elif np.isclose(angles[0], 180) and -0.0001 <= angles[1] <= 90.0001:
+        led_types.append(-1)
+    else:
+        led_types.append(0)
+
+# Build a point and angle list
+n_leds = len(led_angles)
+led_angles = np.array(led_angles)
+
+led_points_and_angles = np.zeros((n_leds, 5))
+led_points_and_angles[:,3:] = led_angles
+
+led_x, led_y, led_z = calculate_position_from_angles(led_angles[:,0], led_angles[:,1])
+
+led_points_and_angles[:, 0] = led_x
+led_points_and_angles[:, 1] = led_y
+led_points_and_angles[:, 2] = led_z
+
+# Build dictionary of types
+type_groups = defaultdict(list)
+for index, led_type in enumerate(led_types):
+    type_groups[led_type].append(led_points_and_angles[index, :])
+
+type_groups = {key: np.array(type_groups[key]) for key in type_groups}
+
+led_xyz = led_points_and_angles[:, :3]
+
+def point_plot(show_numbers=True):
+
+
+    ax = plt.figure().add_subplot(projection='3d')
+
+    colors = {
+        -1: 'r',
+        0: 'b',
+        1: 'k',
+        2: 'g'
+    }
+
+    for key, data in type_groups.items():
+        ax.scatter(data[:, 0], data[:, 1], data[:, 2], c=colors[key])
+
+    if show_numbers:
+        for i in range(n_leds):
+            x,y,z = led_points_and_angles[i, :3]
+            ax.text(x,y,z,s=f"{i}")
+
+    ax.axis("equal")
+
+    return ax
+
+
+
 if __name__ == "__main__":
     print("Camera position:", camera_pos)
     print("Mount position:", mount_pos)
+
+    point_plot()
+
+    plt.show()
