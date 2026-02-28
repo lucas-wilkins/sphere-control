@@ -1,5 +1,7 @@
+import numpy as np
 from matplotlib import pyplot as plt
 
+from spherecontrol.light.positions import led_points_and_angles
 from positions import point_plot
 from light_sequencing import map_path, plot_path
 
@@ -39,3 +41,9 @@ plot_path(ax, bottom_indices)
 plot_path(ax, top_indices)
 
 plt.show()
+
+bottom_data = led_points_and_angles[bottom_indices, :]
+top_data = led_points_and_angles[top_indices, :]
+
+np.save("../bottom_data.npy", bottom_data)
+np.save("../top_data.npy", top_data)
