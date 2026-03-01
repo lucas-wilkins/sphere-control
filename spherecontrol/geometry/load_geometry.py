@@ -9,7 +9,7 @@ def load_geometry(name, scale=135):
     vertices = []
     lines = defaultdict(list)
 
-    for line in importlib.resources.read_text("spherecontrol.graphics.geometry", name+".obj").split("\n"):
+    for line in importlib.resources.read_text("spherecontrol.geometry", name+".obj").split("\n"):
 
         try:
             first_char = line[0]

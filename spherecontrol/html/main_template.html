@@ -1,0 +1,72 @@
+<html>
+    <head>
+        <title>SBM Status</title>
+
+        <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-color: #222;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        </style>
+    </head>
+    <body>
+
+    <!-- Inject SVG Here -->
+
+    <script>
+      const ENDPOINT_URL = "state";
+      const POLL_INTERVAL_MS = 50;
+
+      function getCircles() {
+        const top_elements = Array.from({ length: 78 }, (_, i) => `led-top-${i}`).map(id => document.getElementById(id));
+        const bottom_elements = Array.from({ length: 75 }, (_, i) => `led-bottom-${i}`).map(id => document.getElementById(id));
+
+        return bottom_elements.concat(top_elements);
+      }
+
+
+      function getCircleTexts() {
+        const top_elements = Array.from({ length: 78 }, (_, i) => `led-top-${i}-text`).map(id => document.getElementById(id));
+        const bottom_elements = Array.from({ length: 75 }, (_, i) => `led-bottom-${i}-text`).map(id => document.getElementById(id));
+
+        return bottom_elements.concat(top_elements);
+      }
+
+      const circles = getCircles();
+      const circleTexts = getCircleTexts();
+
+      console.log(circles);
+
+      async function fetchData() {
+        try {
+          const res = await fetch(ENDPOINT_URL);
+          const data = await res.json();
+
+          const colors = data.lights.colors;
+          const whiteText = data.lights.whiteText;
+
+          for (let i = 0; i < 153; i++) {
+              circles[i].setAttribute("fill", colors[i]);
+              if (whiteText[i]) {
+                circleTexts[i].setAttribute("fill", "#fff");
+              } else {
+                circleTexts[i].setAttribute("fill", "#000");
+              }
+          }
+
+        } catch (err) {
+          console.error("Fetch failed:", err);
+        }
+      }
+
+      fetchData();
+      setInterval(fetchData, POLL_INTERVAL_MS);
+    </script>
+
+    </body>
+</html>

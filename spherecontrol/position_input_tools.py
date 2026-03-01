@@ -2,11 +2,10 @@ from collections import defaultdict
 
 import numpy as np
 
-import matplotlib.pyplot as plt
 
 from scipy.spatial import ConvexHull
 
-from positions import led_points_and_angles, type_groups, point_plot, led_xyz
+from led_positions import led_points_and_angles, type_groups, point_plot, led_xyz
 
 
 def normalise(v):

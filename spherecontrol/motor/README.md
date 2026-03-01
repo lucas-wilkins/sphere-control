@@ -1,1 +1,0 @@
-Motor firmware for controlling the two mechanical axes
