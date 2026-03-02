@@ -95,6 +95,9 @@ class GraphicsServer:
                     self.send_response(404)
                     self.end_headers()
 
+            def log_message(self, format, *args):
+                pass  # disable successful request logging
+
         return Handler
 
     def light_control(self, data: bytes):
