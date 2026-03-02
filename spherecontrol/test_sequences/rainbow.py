@@ -45,7 +45,6 @@ class Rainbows(FullSpecificationTestSequence):
 
         a = 3*t
         b = 5*t
-        c = 2*t
 
         axis = np.array([np.cos(a) * np.sin(b), np.sin(a) * np.sin(b), np.cos(b)])
 

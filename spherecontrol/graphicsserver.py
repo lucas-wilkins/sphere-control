@@ -57,12 +57,12 @@ class GraphicsServer:
         # Mechanical data
         mechanical = {
             "stage": {
-                "commanded": self.stage_position.commanded,
-                "actual": self.stage_position.actual
+                "commanded": f"{self.stage_position.commanded:.2g}",
+                "actual": f"{self.stage_position.actual:.2g}"
             },
             "sphere": {
-                "commanded": self.sphere_position.commanded,
-                "actual": self.sphere_position.actual
+                "commanded": f"{self.sphere_position.commanded:.2g}",
+                "actual": f"{self.sphere_position.actual:.2g}"
             }
         }
 

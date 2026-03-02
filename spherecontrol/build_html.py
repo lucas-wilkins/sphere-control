@@ -1,14 +1,17 @@
-import importlib
+from importlib import resources
 
 from build_svg import build_svg
 
 
 def build_html():
-    svg_data = build_svg()
+    led_svg_data = build_svg()
+    orientation_svg_data = resources.read_text("spherecontrol.graphics", "orientation.svg")
 
-    template = importlib.resources.read_text("spherecontrol.html", "main_template.html")
+    template = resources.read_text("spherecontrol.html", "main_template.html")
 
-    replaced = template.replace("<!-- Inject SVG Here -->", svg_data)
+
+
+    replaced = template.replace("<!-- Inject SVGs Here -->", led_svg_data + orientation_svg_data)
 
     with open("html/main.html", 'w') as file:
         file.write(replaced)

@@ -16,7 +16,7 @@
     </head>
     <body>
 
-    <!-- Inject SVG Here -->
+    <!-- Inject SVGs Here -->
 
     <script>
       const ENDPOINT_URL = "state";
@@ -40,6 +40,12 @@
       const circles = getCircles();
       const circleTexts = getCircleTexts();
 
+      const spherePositionLabel = document.getElementById("sphere-position-label");
+      const stagePositionLabel = document.getElementById("stage-position-label");
+
+      const spherePositionText = spherePositionLabel.children[0];
+      const stagePositionText = stagePositionLabel.children[0];
+
       console.log(circles);
 
       async function fetchData() {
@@ -49,6 +55,11 @@
 
           const colors = data.lights.colors;
           const whiteText = data.lights.whiteText;
+
+          const mech = data.mechanical;
+
+          spherePositionText.textContent = mech.sphere.commanded + " (" + mech.sphere.actual + ")";
+          stagePositionText.textContent = mech.stage.commanded + " (" + mech.stage.actual + ")";
 
           for (let i = 0; i < 153; i++) {
               circles[i].setAttribute("fill", colors[i]);
