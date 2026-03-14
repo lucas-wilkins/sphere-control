@@ -2,3 +2,5 @@ numpy
 matplotlib
 scipy
 pyopengl
+pyside6
+pyserial

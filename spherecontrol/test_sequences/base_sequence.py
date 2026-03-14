@@ -2,6 +2,7 @@ import threading
 import time
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
+from threading import Event
 from typing import Callable, Any
 
 import numpy as np
@@ -31,7 +32,7 @@ class TestSequence(ABC):
     def _light_command(self, time) -> bytes:
         """ The command that is to be sent to the controller """
 
-    def run(self, callback: Callable[[bytes], Any], dt: float, speed: float):
+    def run(self, callback: Callable[[bytes], Any], dt: float, speed: float = 1.0, on_stop: Callable[[], None] | None = None) -> threading.Event:
 
         sequence = self
 
@@ -43,8 +44,13 @@ class TestSequence(ABC):
                 next_time += dt
                 time.sleep(max(0, next_time - time.monotonic()))
 
+            if on_stop is not None:
+                on_stop()
+
         stop_event = threading.Event()
         threading.Thread(target=update_loop, args=(stop_event,), daemon=True).start()
+
+        return stop_event
 
     def serve(self, host: str="localhost", port: int=8080, dt: float=0.1, speed: float=1.0):
         server = GraphicsServer(host, port)
@@ -75,7 +81,7 @@ class FullSpecificationTestSequence(TestSequence):
     def _light_command(self, time):
         colors = self.light_colors(time)
 
-        return full_specification(colors[:175, :], colors[175:, :])
+        return full_specification(colors[:75, :], colors[75:, :])
 
 
 class TestSequenceSeries(TestSequence):

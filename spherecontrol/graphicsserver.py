@@ -112,6 +112,14 @@ class GraphicsServer:
         self.logger.info(msg)
         self._server.serve_forever()
 
+    def run_in_thread(self):
+        msg = f"Serving on http://{self.host}:{self.port}"
+        print(msg)
+        self.logger.info(msg)
+
+        thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+        thread.start()
+
     def shutdown(self):
         self._server.shutdown()
         self._server.server_close()

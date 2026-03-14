@@ -1,7 +1,6 @@
 import numpy as np
 from numpy._typing import ArrayLike
 
-from lightdata import light_data
 from test_sequences.base_sequence import FullSpecificationTestSequence
 
 
