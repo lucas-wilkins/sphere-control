@@ -1,6 +1,7 @@
 """ Combined interface, runs Qt window, an HTTP server, and writes to serial """
 import threading
 
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QApplication
 
 from control_panel.display import Display
@@ -14,7 +15,7 @@ from test_sequences.rainbow import Rainbows
 
 
 class Nexus:
-    def __init__(self, full_screen: bool=False):
+    def __init__(self, full_screen: bool=False, widget_size=24):
         # Properties
         self.manual_mode = False
         self.homed = False
@@ -22,11 +23,17 @@ class Nexus:
         # Window
         app = QApplication()
 
+        app.setStyleSheet(f"""
+        QWidget {{ font-size: {widget_size}px; }}
+        QPushButton {{ padding: {widget_size // 2}px {widget_size}px; }}
+        """)
+
         self.control_panel = Display()
         if full_screen:
             self.control_panel.showFullScreen()
         else:
             self.control_panel.show()
+            self.control_panel.setMinimumSize(QSize(800,600))
 
         # Server
         self.server = GraphicsServer()
@@ -92,6 +99,9 @@ class Nexus:
         if self._stop_event is not None:
             self._stop_event.set()
             self.control_panel.set_stopped()
+
+        # TODO Remove later
+        self.control_panel.set_stopped()
 
 if __name__ == "__main__":
     # nexus = Nexus(True)

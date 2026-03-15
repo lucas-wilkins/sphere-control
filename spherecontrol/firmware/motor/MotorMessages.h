@@ -6,11 +6,11 @@
 #define INCONSISTENT_STATE 12
 
 #define MOVE               20
-#define MOVE_INCREMENTAL   21
+#define MOVE_STEPS         21
 #define MOVING             25
 #define MOVE_COMPLETE      26
 
-#define HOME_DATUM         30
+#define SET_HOME           30
 #define HOME_DONE          31
 
 #define MANUAL_ON          40

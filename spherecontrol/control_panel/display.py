@@ -1,6 +1,7 @@
 from enum import Enum
 
 from PySide6.QtCore import Signal
+from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QWidget, QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, \
     QPushButton, QGridLayout, QLabel
 
@@ -10,6 +11,11 @@ class NavigationState(Enum):
     NORMAL = "normal"
     TEST_RUNNING = "running"
 
+class QRightLabel(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setAlignment(Qt.AlignRight)
 
 class MainPage(QWidget):
     go_to_settings = Signal()
@@ -26,13 +32,38 @@ class MainPage(QWidget):
         self.navigation_widget.setLayout(self.navigation_layout)
 
         self.data_widget = QWidget()
+        self.data_layout = QGridLayout()
+        self.data_widget.setLayout(self.data_layout)
+
+        self.stage_axis_actual = QLabel()
+        self.stage_axis_commanded = QLabel()
+
+        self.sphere_axis_actual = QLabel()
+        self.sphere_axis_commanded = QLabel()
+
+        self.lights = QLabel()
+
+        self.data_layout.addWidget(QLabel("Actual"), 0, 1)
+        self.data_layout.addWidget(QLabel("Commanded"), 0, 2)
+
+        self.data_layout.addWidget(QRightLabel("Stage"), 1, 0)
+        self.data_layout.addWidget(self.stage_axis_actual, 1, 1)
+        self.data_layout.addWidget(self.stage_axis_commanded, 1, 2)
+
+        self.data_layout.addWidget(QRightLabel("Sphere"), 2, 0)
+        self.data_layout.addWidget(self.sphere_axis_actual, 2, 1)
+        self.data_layout.addWidget(self.sphere_axis_commanded, 2, 2)
+
+        self.data_layout.addWidget(QRightLabel("Lights"), 3, 0)
+        self.data_layout.addWidget(self.lights, 3, 1)
+
+        # Navigation Bar
 
         self.manual_label = QLabel("")
         self.navigation_layout.addWidget(self.manual_label)
+
         self.status_label = QLabel(_default_status)
         self.navigation_layout.addWidget(self.status_label)
-
-
 
         self.navigation_layout.addSpacerItem(QSpacerItem(0,0, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
@@ -40,6 +71,9 @@ class MainPage(QWidget):
         self.navigation_button.clicked.connect(self.navigation_button_clicked)
         self.navigation_layout.addWidget(self.navigation_button)
 
+        # Put things in place
+
+        self.base_layout.addWidget(self.data_widget)
         self.base_layout.addSpacerItem(QSpacerItem(0,0,QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.base_layout.addWidget(self.navigation_widget)
 
@@ -125,6 +159,7 @@ class Display(QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
 
 
         self.pages = {
