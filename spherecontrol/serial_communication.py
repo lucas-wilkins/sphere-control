@@ -49,7 +49,7 @@ class SerialControl:
                 continue
 
             try:
-                with serial.Serial(port.name, BAUD, timeout=1) as ser:
+                with serial.Serial(port.device, BAUD, timeout=1) as ser:
 
                     time.sleep(2) # Wait for connection to initialise
 
