@@ -69,15 +69,15 @@ class SerialControl:
 
                         if component_type == LightMessageType.LIGHT_ID.value:
                             print("Lights")
-                            lights = port.name
+                            lights = port.device
 
                         elif component_type == MotorMessageType.STAGE_MOTOR_ID.value:
                             print("Stage axis")
-                            stage = port.name
+                            stage = port.device
 
                         elif component_type == MotorMessageType.SPHERE_MOTOR_ID.value:
                             print("Sphere axis")
-                            sphere = port.name
+                            sphere = port.device
 
                         else:
                             print("Unknown Component")

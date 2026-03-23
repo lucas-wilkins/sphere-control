@@ -104,5 +104,4 @@ class Nexus:
         self.control_panel.set_stopped()
 
 if __name__ == "__main__":
-    # nexus = Nexus(True)
-    nexus = Nexus()
+    nexus = Nexus(True)

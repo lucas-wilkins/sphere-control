@@ -1,0 +1,5 @@
+source spherecontrol/.venv/bin/activate
+
+export PYTHONPATH="$(pwd)/"
+
+python3 spherecontrol/nexus.py
