@@ -18,3 +18,6 @@
 
 #define UNKNOWN_REQUEST    99
 #define IDENTIFY           100
+
+#define STAGE_MOTOR_ID     2
+#define SPHERE_MOTOR_ID    3

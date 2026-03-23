@@ -1,14 +1,21 @@
 import logging
+import time
+
 import serial
 
+from serial.tools import list_ports
+
 from firmware.lights.light_messages import LightMessageType
+from firmware.motor.motor_messages import MotorMessageType
+
 from test_sequences.axis_sequence import AxisSequence
 from test_sequences.base_sequence import TestSequenceSeries
 from test_sequences.chase_sequence import ChaseSequence
 from test_sequences.rainbow import Rainbows
 
-LIGHTS_BAUD = 9600
-MOTOR_BAUD = 9600
+BAUD = 57600
+
+
 
 class SerialControl:
     """ Main class for handling serial communication with all devices """
@@ -17,11 +24,75 @@ class SerialControl:
                  sphere_port ="dummy",
                  lights_port = "dummy"):
 
-        self.lights_serial = DummyLightSerial() if lights_port == "dummy" else serial.Serial(lights_port, LIGHTS_BAUD)
-        self.stage_serial = DummyMotorSerial() if stage_port == "dummy" else serial.Serial(stage_port, MOTOR_BAUD)
-        self.sphere_serial = DummyMotorSerial() if sphere_port == "dummy" else serial.Serial(sphere_port, MOTOR_BAUD)
+        self.lights_serial = DummyLightSerial() if lights_port == "dummy" else serial.Serial(lights_port, BAUD)
+        self.stage_serial = DummyMotorSerial() if stage_port == "dummy" else serial.Serial(stage_port, BAUD)
+        self.sphere_serial = DummyMotorSerial() if sphere_port == "dummy" else serial.Serial(sphere_port, BAUD)
 
         self.is_homed = False
+
+    @staticmethod
+    def auto_assign() -> "SerialControl":
+        """ Automatically find the serial ports for devices """
+
+        # Find all available serial ports
+        ports = list_ports.comports()
+
+        stage = "dummy"
+        sphere = "dummy"
+        lights = "dummy"
+
+        for port in ports:
+            print(port.name)
+
+            if "USB" not in port.name and "COM" not in port.name:
+                print(f"{port.name} does not contain 'USB' or 'COM', skipping")
+                continue
+
+            try:
+                with serial.Serial(port.name, BAUD, timeout=1) as ser:
+
+                    time.sleep(2) # Wait for connection to initialise
+
+                    ser.write(bytes([LightMessageType.IDENTIFY.value]))
+                    data = ser.read(2)
+
+                    if len(data) != 2:
+                        print("Could not connect, timeout")
+                        continue
+
+                    response_type = int(data[0])
+
+                    if response_type == LightMessageType.IDENTIFY.value:
+                        print("System component")
+
+                        component_type = int(data[1])
+
+                        if component_type == LightMessageType.LIGHT_ID.value:
+                            print("Lights")
+                            lights = port.name
+
+                        elif component_type == MotorMessageType.STAGE_MOTOR_ID.value:
+                            print("Stage axis")
+                            stage = port.name
+
+                        elif component_type == MotorMessageType.SPHERE_MOTOR_ID.value:
+                            print("Sphere axis")
+                            sphere = port.name
+
+                        else:
+                            print("Unknown Component")
+
+                    else:
+                        print("Non-system component")
+
+
+
+            except Exception as e:
+                print(f"Failed to connect: {e}")
+
+        return SerialControl(stage_port=stage, sphere_port=sphere, lights_port=lights)
+
+
 
 
 class DummySerial:
@@ -71,3 +142,7 @@ class DummyMotorSerial(DummySerial):
 
     def write(self, msg: bytes):
         super().write(msg)
+
+if __name__ == "__main__":
+    serial_coms = SerialControl.auto_assign()
+

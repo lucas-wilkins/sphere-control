@@ -8,3 +8,8 @@
 
 #define UNKNOWN_REQUEST    99
 #define IDENTIFY           100
+
+#define SERIAL_SUCCESS     200
+#define SERIAL_ERROR       201
+
+#define LIGHT_ID           1

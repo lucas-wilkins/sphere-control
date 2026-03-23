@@ -41,7 +41,7 @@ class Nexus:
         self._stop_event: threading.Event | None = None
 
         # Serial
-        self.devices = SerialControl()
+        self.devices = SerialControl.auto_assign()
 
         # Wire controls
         self.control_panel.light_test.connect(self.start_light_test)

@@ -22,4 +22,6 @@ class MotorMessageType(Enum):
     MANUAL_OFF = 41
     UNKNOWN_REQUEST = 99
     IDENTIFY = 100
+    STAGE_MOTOR_ID = 2
+    SPHERE_MOTOR_ID = 3
 
