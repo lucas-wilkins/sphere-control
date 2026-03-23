@@ -1,3 +1,4 @@
+import sys
 from enum import Enum
 
 from PySide6.QtCore import Signal
@@ -118,12 +119,14 @@ class SettingsPage(QWidget):
         self.imaging = QPushButton("Imaging Position")
         self.light_test = QPushButton("Light Diagnostic")
         self.combined_test = QPushButton("Combined Diagnostic")
+        self.exit_button = QPushButton("Exit Interface")
 
         self.button_layout.addWidget(self.manual_mode, 0, 0)
         self.button_layout.addWidget(self.home, 1, 0)
         self.button_layout.addWidget(self.imaging, 2, 0)
         self.button_layout.addWidget(self.light_test, 3, 0)
         self.button_layout.addWidget(self.combined_test, 4, 0)
+        self.button_layout.addWidget(self.exit_button, 5, 0)
 
         self.button_widget.setLayout(self.button_layout)
 
@@ -142,6 +145,8 @@ class SettingsPage(QWidget):
 
         self.base_layout.addSpacerItem(QSpacerItem(0,0,QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.base_layout.addWidget(self.navigation_widget)
+
+        self.exit_button.clicked.connect(sys.exit)
 
 
 class Page(Enum):
