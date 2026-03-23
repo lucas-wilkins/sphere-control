@@ -83,7 +83,7 @@ class Nexus:
             Rainbows())
 
         self._stop_event = sequencer.run(
-            self.send_to_lights_and_server, dt=0.05,
+            self.send_to_lights_and_server, dt=0.2,
             on_stop=self.lights_off)
 
     def start_combined_test(self):
