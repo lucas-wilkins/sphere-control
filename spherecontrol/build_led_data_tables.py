@@ -36,6 +36,7 @@ top_path = ("RU LU RU LU LU LU          "
 
 bottom_indices = map_path(bottom_path, bottom_start, bottom_up)
 top_indices = map_path(top_path, top_start, top_up)
+top_indices.reverse() # Top is backwards
 
 plot_path(ax, bottom_indices)
 plot_path(ax, top_indices)

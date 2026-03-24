@@ -67,7 +67,7 @@ def neighbour_mapping():
 
 neighbours = neighbour_mapping()
 
-def map_path(path: str, start: int, up: int):
+def map_path(path: str, start: int, up: int) -> list[int]:
 
     tokens = [token for token in path.split(" ") if len(token) > 0]
 
