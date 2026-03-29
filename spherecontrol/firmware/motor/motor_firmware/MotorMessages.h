@@ -5,10 +5,12 @@
 #define REPORT_POSITION    11
 #define INCONSISTENT_STATE 12
 
-#define MOVE               20
-#define MOVE_STEPS         21
+#define GOTO               20
+#define GOTO_STEPS         21
+#define INCREMENT_STEPS    22
 #define MOVING             25
 #define MOVE_COMPLETE      26
+
 
 #define SET_HOME           30
 #define HOME_DONE          31
@@ -18,6 +20,9 @@
 
 #define UNKNOWN_REQUEST    99
 #define IDENTIFY           100
+
+#define SERIAL_SUCCESS     200
+#define SERIAL_ERROR       201
 
 #define STAGE_MOTOR_ID     2
 #define SPHERE_MOTOR_ID    3

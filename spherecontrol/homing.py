@@ -3,7 +3,7 @@ from typing import Callable
 
 import numpy as np
 
-from motor_model import MotorModel
+from simulations.motor_model import MotorModel
 
 
 def gather_home_data(move_size: int,

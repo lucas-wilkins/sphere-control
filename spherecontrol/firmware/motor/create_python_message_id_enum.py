@@ -2,7 +2,7 @@
 
 import textwrap
 
-with open("MotorMessages.h", 'r') as fin:
+with open("motor_firmware/MotorMessages.h", 'r') as fin:
     with open("motor_messages.py", 'w') as fout:
         fout.write(textwrap.dedent('''
         """ Motor Messages
