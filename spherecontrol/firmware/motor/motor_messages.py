@@ -9,14 +9,15 @@ DO NOT EDIT MANUALLY
 from enum import Enum
 
 class MotorMessageType(Enum):
-    GET_POSITION = 10
+    QUERY_POSITION = 10
     REPORT_POSITION = 11
     INCONSISTENT_STATE = 12
     GOTO = 20
     GOTO_STEPS = 21
     INCREMENT_STEPS = 22
-    MOVING = 25
-    MOVE_COMPLETE = 26
+    QUERY_MOVING = 25
+    IS_MOVING = 26
+    NOT_MOVING = 27
     SET_HOME = 30
     HOME_DONE = 31
     MANUAL_ON = 40

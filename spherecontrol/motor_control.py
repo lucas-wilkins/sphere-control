@@ -1,4 +1,5 @@
 import logging
+import time
 
 import serial
 
@@ -32,15 +33,36 @@ class MotorControl:
         else:
             self.logger.error("Unknown response")
 
-    def get_position(self) -> tuple[int, int] | None:
-        self.serial.write(bytes([MotorMessageType.GET_POSITION.value]))
-
+    def is_moving(self) -> bool | None:
+        self.serial.write(bytes([MotorMessageType.QUERY_MOVING.value]))
         data = self.serial.read(1)
-        response_type = int(data[0])
 
         if len(data) != 1:
             self.logger.error("Timeout")
             return None
+
+
+        response_type = int(data[0])
+
+        if response_type == MotorMessageType.IS_MOVING.value:
+            return True
+        elif response_type == MotorMessageType.NOT_MOVING.value:
+            return False
+        else:
+            self._report_bad_response(data)
+            return None
+
+
+    def get_position(self) -> tuple[int, int] | None:
+        self.serial.write(bytes([MotorMessageType.QUERY_POSITION.value]))
+
+        data = self.serial.read(1)
+
+        if len(data) != 1:
+            self.logger.error("Timeout")
+            return None
+
+        response_type = int(data[0])
 
         if response_type == MotorMessageType.REPORT_POSITION.value:
             # All good
@@ -56,9 +78,17 @@ class MotorControl:
             return value_1, value_2
 
         else:
-            self.logger.error(f"Received incorrect response ({data})")
+            self._report_bad_response(data)
             return None
 
+
+    def _report_bad_response(self, data: bytes):
+        try:
+            message_type = MotorMessageType(int(data[0]))
+        except:
+            message_type = data
+
+        self.logger.error(f"Received incorrect response ({message_type})")
 
     def increment_steps(self, steps):
         pass
@@ -76,10 +106,20 @@ class MotorControl:
 if __name__ == "__main__":
     serial_comms = SerialControl.auto_assign()
 
+    time.sleep(2)
+
     stage_motor = MotorControl(serial_comms.stage_serial, "Stage")
 
-    print(stage_motor.get_position())
+    # print(stage_motor.get_position())
+
     stage_motor.goto_steps(10000)
 
-    for i in range(1000):
-        print(stage_motor.get_position())
+    for i in range(25):
+        time.sleep(0.01)
+        print(i, ":", stage_motor.is_moving(), stage_motor.get_position())
+
+    stage_motor.goto_steps(0)
+
+    for i in range(25):
+        time.sleep(0.01)
+        print(i, ":", stage_motor.is_moving(), stage_motor.get_position())

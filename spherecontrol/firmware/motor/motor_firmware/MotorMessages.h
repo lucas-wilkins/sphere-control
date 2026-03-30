@@ -1,15 +1,16 @@
 /* Message IDs */
 
 
-#define GET_POSITION       10
+#define QUERY_POSITION     10
 #define REPORT_POSITION    11
 #define INCONSISTENT_STATE 12
 
 #define GOTO               20
 #define GOTO_STEPS         21
 #define INCREMENT_STEPS    22
-#define MOVING             25
-#define MOVE_COMPLETE      26
+#define QUERY_MOVING       25
+#define IS_MOVING          26
+#define NOT_MOVING         27
 
 
 #define SET_HOME           30
