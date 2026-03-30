@@ -1,17 +1,72 @@
 import logging
+import threading
 import time
+from typing import Callable
 
 import serial
 
 from firmware.motor.motor_messages import MotorMessageType
 from serial_communication import SerialControl
 
+class MotorControlPause:
+    """ Does `with` statement that pauses motor position updates """
+    def __init__(self, motor_control: "MotorControl"):
+        self.motor_control = motor_control
+
+    def __enter__(self):
+        self.motor_control.position_update_stop.set()
+
+    def __exit__(self):
+        self.motor_control.schedule_position_updates(
+            self.motor_control._position_update_callback)
+
+class Empty:
+    """ Can be used in `with`, does nothing"""
+    def __enter__(self):
+        pass
+
+    def __exit__(self):
+        pass
 
 class MotorControl:
+    """ Interface for motor stuff """
 
-    def __init__(self, serial_object: serial.Serial, motor_type):
+    def __init__(self, serial_object: serial.Serial, motor_type: str):
         self.logger = logging.getLogger(f"Motor::{motor_type}")
         self.serial = serial_object
+
+        self._position_update_stop = threading.Event()
+        self._position_update_callback = None
+        self._position_update_dt = 0.2
+
+    def schedule_position_updates(self, callback: Callable[[bool, int, int], None]):
+        """ Get position updates - runs the callback on the data obtained """
+
+        def update_loop(stop_event, callback, dt):
+            next_time = time.monotonic()
+
+            while not stop_event.is_set():
+
+                if callback is not None:
+                    position = self.get_state()
+
+                    if position is not None:
+                        callback(*position)
+
+                next_time += dt
+                time.sleep(max(0, next_time - time.monotonic()))
+
+        stop_event = threading.Event()
+        threading.Thread(target=update_loop, args=(stop_event, callback, self._position_update_dt), daemon=True).start()
+
+        self.position_update_stop = stop_event
+
+    def paused(self):
+        """ Pause position updates """
+        if self._position_update_callback is None:
+            return Empty()
+        else:
+            return MotorControlPause(self)
 
     def goto_steps(self, target: int):
         msg = bytes([MotorMessageType.GOTO_STEPS.value]) + target.to_bytes(4, byteorder='little', signed=True)
@@ -33,28 +88,9 @@ class MotorControl:
         else:
             self.logger.error("Unknown response")
 
-    def is_moving(self) -> bool | None:
-        self.serial.write(bytes([MotorMessageType.QUERY_MOVING.value]))
-        data = self.serial.read(1)
+    def get_state(self) -> tuple[bool, int, int] | None:
 
-        if len(data) != 1:
-            self.logger.error("Timeout")
-            return None
-
-
-        response_type = int(data[0])
-
-        if response_type == MotorMessageType.IS_MOVING.value:
-            return True
-        elif response_type == MotorMessageType.NOT_MOVING.value:
-            return False
-        else:
-            self._report_bad_response(data)
-            return None
-
-
-    def get_position(self) -> tuple[int, int] | None:
-        self.serial.write(bytes([MotorMessageType.QUERY_POSITION.value]))
+        self.serial.write(bytes([MotorMessageType.QUERY_STATE.value]))
 
         data = self.serial.read(1)
 
@@ -64,18 +100,27 @@ class MotorControl:
 
         response_type = int(data[0])
 
-        if response_type == MotorMessageType.REPORT_POSITION.value:
+        if response_type == MotorMessageType.REPORT_STATE.value:
             # All good
-            data = self.serial.read(8)
 
-            if len(data) != 8:
+            data = self.serial.read(9)
+
+            if len(data) != 9:
                 self.logger.error("Timeout")
                 return None
 
-            value_1 = int.from_bytes(data[:4], byteorder='little', signed=True)
-            value_2 = int.from_bytes(data[4:], byteorder='little', signed=True)
+            if data[0] == MotorMessageType.IS_MOVING.value:
+                moving = True
+            elif data[0] == MotorMessageType.NOT_MOVING.value:
+                moving = False
+            else:
+                self.logger.error("Bad move state")
+                return None
 
-            return value_1, value_2
+            value_1 = int.from_bytes(data[1:5], byteorder='little', signed=True)
+            value_2 = int.from_bytes(data[5:], byteorder='little', signed=True)
+
+            return moving, value_1, value_2
 
         else:
             self._report_bad_response(data)
@@ -116,10 +161,10 @@ if __name__ == "__main__":
 
     for i in range(25):
         time.sleep(0.01)
-        print(i, ":", stage_motor.is_moving(), stage_motor.get_position())
+        print(i, ":", stage_motor.get_state())
 
     stage_motor.goto_steps(0)
 
     for i in range(25):
         time.sleep(0.01)
-        print(i, ":", stage_motor.is_moving(), stage_motor.get_position())
+        print(i, ":", stage_motor.get_state())

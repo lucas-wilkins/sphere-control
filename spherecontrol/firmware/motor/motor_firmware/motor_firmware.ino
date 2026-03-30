@@ -45,7 +45,10 @@ byte serial_success[] = {SERIAL_SUCCESS};
 byte serial_error[] = {SERIAL_ERROR};
 byte is_moving[] = {IS_MOVING};
 byte not_moving[] = {NOT_MOVING};
-byte position_response[] = {REPORT_POSITION, 0, 0, 0, 0, 0, 0, 0, 0};
+byte position_response[] = {REPORT_STATE, 
+                            NOT_MOVING, 
+                            0, 0, 0, 0, 
+                            0, 0, 0, 0};
 
 
 
@@ -71,14 +74,6 @@ void send_ERROR() {
   Serial.write(serial_error, 1);
 }
 
-void send_moving_response() {
-  // Send response to a QUERY_MOVING request
-  if (moving) {
-    Serial.write(is_moving, 1);
-  } else {
-    Serial.write(not_moving, 1);
-  }
-}
 
 void send_UNKNOWN() {
   // Send message for unknown request
@@ -91,13 +86,21 @@ void send_ID() {
 }
 
 
-void send_POSITION() {
+void send_STATE() {
   // Send a message with the position as reported by encoder, and current step position
   const long encoder = actual_position_encoder;
   const long steps = actual_position_steps;
-  memcpy(&position_response[1], &encoder, 4);
-  memcpy(&position_response[5], &steps, 4);
-  Serial.write(position_response, 9);
+  
+  if (moving) {
+    position_response[1] = IS_MOVING;
+  } else {
+    position_response[1] = NOT_MOVING;
+  }
+  
+  memcpy(&position_response[2], &encoder, 4);
+  memcpy(&position_response[6], &steps, 4);
+  
+  Serial.write(position_response, 10);
 }
 
 void set_position(long target_position) {
@@ -175,13 +178,8 @@ void loop() {
         
         break;
 
-      case QUERY_POSITION:
-        send_POSITION();
-        
-        break;
-
-      case QUERY_MOVING:
-        send_moving_response();
+      case QUERY_STATE:
+        send_STATE();
         
         break;
 

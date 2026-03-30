@@ -107,10 +107,23 @@ class DummySerial:
     def in_waiting(self) -> int:
         return len(self.byte_queue)
 
-    def read(self) -> bytes:
+    def read(self, n_bytes: int | None = None) -> bytes:
         data = bytes(self.byte_queue)
-        self.byte_queue = bytearray()
-        return data
+        if n_bytes is None:
+            self.byte_queue = bytearray()
+            return data
+        else:
+
+            if n_bytes <= len(data):
+                to_return = data[:n_bytes]
+                self.byte_queue = bytearray(data[n_bytes:])
+
+            else:
+                to_return = data
+                self.byte_queue = bytearray()
+
+            return to_return
+
 
     def _enqueue(self, msg: bytes):
         self.byte_queue += msg
@@ -142,6 +155,25 @@ class DummyMotorSerial(DummySerial):
 
     def write(self, msg: bytes):
         super().write(msg)
+
+        assert len(msg) > 0, "Don't send empty strings on serial"
+
+        match MotorMessageType(int(msg[0])):
+            case MotorMessageType.IDENTIFY:
+                self._enqueue(bytes([MotorMessageType.IDENTIFY.value, MotorMessageType.STAGE_MOTOR_ID.value]))
+
+            case MotorMessageType.QUERY_STATE:
+                msg = (bytes([MotorMessageType.REPORT_STATE.value, MotorMessageType.IS_MOVING.value]) +
+                      (123).to_bytes(4, byteorder='little', signed=True) +
+                      (456).to_bytes(4, byteorder='little', signed=True))
+
+                self._enqueue(msg)
+
+            case MotorMessageType.GOTO_STEPS:
+                self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
+
+            case _:
+                self._enqueue(bytes([LightMessageType.UNKNOWN_REQUEST.value]))
 
 if __name__ == "__main__":
     serial_coms = SerialControl.auto_assign()

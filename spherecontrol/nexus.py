@@ -4,9 +4,10 @@ import threading
 from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QApplication
 
-from control_panel.display import Display
+from control_panel.display import Display, Page
 from firmware.lights.light_messages import LightMessageType
 from graphicsserver import GraphicsServer
+from motor_control import MotorControl
 from serial_communication import SerialControl
 from test_sequences.axis_sequence import AxisSequence
 from test_sequences.base_sequence import TestSequenceSeries
@@ -43,51 +44,62 @@ class Nexus:
         # Serial
         self.devices = SerialControl.auto_assign()
 
+        # Motor control
+        self.stage_control = MotorControl(serial_object=self.devices.stage_serial, motor_type="Stage")
+        self.stage_control.schedule_position_updates(self.update_stage_state)
+
         # Wire controls
-        self.control_panel.light_test.connect(self.start_light_test)
-        self.control_panel.combined_test.connect(self.start_combined_test)
+        self.control_panel.sequence_light_test.connect(self.start_sequence_light_test)
+        self.control_panel.axis_light_test.connect(self.start_axis_light_test)
+        self.control_panel.rainbow_light_test.connect(self.start_rainbow_light_test)
+        self.control_panel.full_light_test.connect(self.start_full_light_test)
+
         self.control_panel.home.connect(self.start_home)
         self.control_panel.imaging.connect(self.start_imaging_position)
         self.control_panel.stop_current.connect(self.stop)
-        self.control_panel.enable_manual_mode.connect(self.enable_manual)
-        self.control_panel.disable_manual_mode.connect(self.disable_manual)
 
         # Start Qt app
         app.exec()
 
+    def update_stage_state(self, moving: bool, encoder: int, steps: int):
+        self.control_panel.pages[Page.MAIN].stage_axis_encoder.setText(str(encoder))
+        self.control_panel.pages[Page.MAIN].stage_axis_steps.setText(str(steps))
+        self.control_panel.pages[Page.MAIN].stage_axis_moving.setText("Moving" if moving else "")
+
     def lights_off(self):
         self.send_to_lights_and_server(bytes([LightMessageType.ALL_OFF.value]))
-
-    def set_homed(self):
-        self.is_homed = True
-
-    def enable_manual(self):
-        self.manual_mode = True
-
-    def disable_manual(self):
-        self.manual_mode = False
-
-    def set_manual_control_allowed(self, allowed: bool):
-        pass
 
     def send_to_lights_and_server(self, msg: bytes):
         self.devices.lights_serial.write(msg)
         self.server.light_control(msg)
 
-    def start_light_test(self):
-        sequencer = TestSequenceSeries(
-            ChaseSequence(10),
-            AxisSequence(axis=(1, 0, 0), color=(1, 0, 0)),
-            AxisSequence(axis=(0, 1, 0), color=(0, 1, 0)),
-            AxisSequence(axis=(0, 0, 1), color=(0, 0, 1)),
-            Rainbows())
+    def run_light_test(self, sequencer):
 
         self._stop_event = sequencer.run(
             self.send_to_lights_and_server, dt=0.25,
             on_stop=self.lights_off)
 
-    def start_combined_test(self):
-        pass
+
+    def start_full_light_test(self):
+        self.run_light_test(TestSequenceSeries(
+            ChaseSequence(10),
+            AxisSequence(axis=(1, 0, 0), color=(1, 0, 0)),
+            AxisSequence(axis=(0, 1, 0), color=(0, 1, 0)),
+            AxisSequence(axis=(0, 0, 1), color=(0, 0, 1)),
+            Rainbows()))
+
+    def start_axis_light_test(self):
+        self.run_light_test(TestSequenceSeries(
+            AxisSequence(axis=(1, 0, 0), color=(1, 0, 0)),
+            AxisSequence(axis=(0, 1, 0), color=(0, 1, 0)),
+            AxisSequence(axis=(0, 0, 1), color=(0, 0, 1))))
+
+    def start_rainbow_light_test(self):
+        self.run_light_test(Rainbows())
+
+    def start_sequence_light_test(self):
+        self.run_light_test(ChaseSequence(4))
+
 
     def start_home(self):
         pass

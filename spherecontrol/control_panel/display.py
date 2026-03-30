@@ -18,6 +18,13 @@ class QRightLabel(QLabel):
 
         self.setAlignment(Qt.AlignRight)
 
+
+class QCentreLabel(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setAlignment(Qt.AlignCenter)
+
 class MainPage(QWidget):
     go_to_settings = Signal()
     stop = Signal()
@@ -36,24 +43,28 @@ class MainPage(QWidget):
         self.data_layout = QGridLayout()
         self.data_widget.setLayout(self.data_layout)
 
-        self.stage_axis_actual = QLabel()
-        self.stage_axis_commanded = QLabel()
+        self.stage_axis_steps = QCentreLabel()
+        self.stage_axis_encoder = QCentreLabel()
+        self.stage_axis_moving = QCentreLabel()
 
-        self.sphere_axis_actual = QLabel()
-        self.sphere_axis_commanded = QLabel()
+        self.sphere_axis_steps = QCentreLabel()
+        self.sphere_axis_encoder = QCentreLabel()
+        self.sphere_axis_moving = QCentreLabel()
 
         self.lights = QLabel()
 
-        self.data_layout.addWidget(QLabel("Actual"), 0, 1)
-        self.data_layout.addWidget(QLabel("Commanded"), 0, 2)
+        self.data_layout.addWidget(QCentreLabel("Steps"), 0, 1)
+        self.data_layout.addWidget(QCentreLabel("Encoder"), 0, 2)
 
-        self.data_layout.addWidget(QRightLabel("Stage"), 1, 0)
-        self.data_layout.addWidget(self.stage_axis_actual, 1, 1)
-        self.data_layout.addWidget(self.stage_axis_commanded, 1, 2)
+        self.data_layout.addWidget(QRightLabel("Stage:"), 1, 0)
+        self.data_layout.addWidget(self.stage_axis_steps, 1, 1)
+        self.data_layout.addWidget(self.stage_axis_encoder, 1, 2)
+        self.data_layout.addWidget(self.stage_axis_moving, 1, 3)
 
-        self.data_layout.addWidget(QRightLabel("Sphere"), 2, 0)
-        self.data_layout.addWidget(self.sphere_axis_actual, 2, 1)
-        self.data_layout.addWidget(self.sphere_axis_commanded, 2, 2)
+        self.data_layout.addWidget(QRightLabel("Sphere:"), 2, 0)
+        self.data_layout.addWidget(self.sphere_axis_steps, 2, 1)
+        self.data_layout.addWidget(self.sphere_axis_encoder, 2, 2)
+        self.data_layout.addWidget(self.sphere_axis_moving, 2, 3)
 
         self.data_layout.addWidget(QRightLabel("Lights"), 3, 0)
         self.data_layout.addWidget(self.lights, 3, 1)
@@ -117,15 +128,34 @@ class SettingsPage(QWidget):
 
         self.home = QPushButton("Home")
         self.imaging = QPushButton("Imaging Position")
-        self.light_test = QPushButton("Light Diagnostic")
-        self.combined_test = QPushButton("Combined Diagnostic")
         self.exit_button = QPushButton("Exit Interface")
+
+        self.sequence_light_test = QPushButton("Sequence")
+        self.axis_light_test = QPushButton("Axis")
+        self.rainbow_light_test = QPushButton("Rainbow")
+        self.full_light_test = QPushButton("Full")
+
+        light_tests = QWidget()
+        light_tests_layout = QHBoxLayout()
+        light_tests_layout.addWidget(QCentreLabel("Light Tests"))
+        light_tests_layout.addWidget(self.sequence_light_test)
+        light_tests_layout.addWidget(self.axis_light_test)
+        light_tests_layout.addWidget(self.rainbow_light_test)
+        light_tests_layout.addWidget(self.full_light_test)
+        light_tests.setLayout(light_tests_layout)
+
+        #
+        # Axis nudging
+        #
+
+        #
+        # Main layout
+        #
 
         self.button_layout.addWidget(self.manual_mode, 0, 0)
         self.button_layout.addWidget(self.home, 1, 0)
         self.button_layout.addWidget(self.imaging, 2, 0)
-        self.button_layout.addWidget(self.light_test, 3, 0)
-        self.button_layout.addWidget(self.combined_test, 4, 0)
+        self.button_layout.addWidget(light_tests, 3, 0)
         self.button_layout.addWidget(self.exit_button, 5, 0)
 
         self.button_widget.setLayout(self.button_layout)
@@ -155,8 +185,10 @@ class Page(Enum):
 
 class Display(QMainWindow):
     stop_current = Signal()
-    light_test = Signal()
-    combined_test = Signal()
+    sequence_light_test = Signal()
+    axis_light_test = Signal()
+    rainbow_light_test = Signal()
+    full_light_test = Signal()
     home = Signal()
     imaging = Signal()
     enable_manual_mode = Signal()
@@ -175,10 +207,12 @@ class Display(QMainWindow):
         self.pages[Page.MAIN].go_to_settings.connect(self.on_go_to_settings)
         self.pages[Page.MAIN].stop.connect(self.on_stop_requested)
         self.pages[Page.SETTINGS].main_button.clicked.connect(self.on_go_to_main)
-        self.pages[Page.SETTINGS].light_test.clicked.connect(self.on_run_light_test)
+        self.pages[Page.SETTINGS].sequence_light_test.clicked.connect(self.on_run_sequence_light_test)
+        self.pages[Page.SETTINGS].axis_light_test.clicked.connect(self.on_run_axis_light_test)
+        self.pages[Page.SETTINGS].rainbow_light_test.clicked.connect(self.on_run_rainbow_light_test)
+        self.pages[Page.SETTINGS].full_light_test.clicked.connect(self.on_run_full_light_test)
         self.pages[Page.SETTINGS].home.clicked.connect(self.on_run_home)
         self.pages[Page.SETTINGS].imaging.clicked.connect(self.on_run_imaging)
-        self.pages[Page.SETTINGS].combined_test.clicked.connect(self.on_run_combined_test)
         self.pages[Page.SETTINGS].manual_mode.clicked.connect(self.on_manual_clicked)
 
         self.selected_page: Page = Page.MAIN
@@ -213,14 +247,24 @@ class Display(QMainWindow):
     def on_go_to_settings(self):
         self.set_page(Page.SETTINGS)
 
-    def on_run_light_test(self):
-        self.set_status("Running light test...")
-        self.light_test.emit()
+    def on_run_sequence_light_test(self):
+        self.set_status("Running sequence light test...")
+        self.sequence_light_test.emit()
         self.run_settings_procedure()
 
-    def on_run_combined_test(self):
-        self.set_status("Running combined test...")
-        self.combined_test.emit()
+    def on_run_axis_light_test(self):
+        self.set_status("Running axis light test...")
+        self.axis_light_test.emit()
+        self.run_settings_procedure()
+
+    def on_run_rainbow_light_test(self):
+        self.set_status("Running rainbow light test...")
+        self.rainbow_light_test.emit()
+        self.run_settings_procedure()
+
+    def on_run_full_light_test(self):
+        self.set_status("Running full light test...")
+        self.full_light_test.emit()
         self.run_settings_procedure()
 
     def on_run_home(self):
