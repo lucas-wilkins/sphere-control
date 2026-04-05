@@ -44,8 +44,8 @@ class SerialControl:
         for port in ports:
             print(port.name)
 
-            if "USB" not in port.name and "COM" not in port.name:
-                print(f"{port.name} does not contain 'USB' or 'COM', skipping")
+            if "USB" not in port.name and "COM" not in port.name and "ACM" not in port.name:
+                print(f"{port.name} does not contain 'USB', 'ACM' or 'COM', skipping")
                 continue
 
             try:
