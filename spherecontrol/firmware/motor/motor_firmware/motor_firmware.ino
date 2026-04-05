@@ -135,14 +135,17 @@ void set_position(long target_position) {
     }
   }
 
-
   lock = true;
   actual_position_steps = new_actual;
   target_position_steps = target;
   lock = false;
   
   set_moving(true); // Needs to go after the target is set, otherwise
+}
 
+void increment_position(long delta) {
+  // Increment the target position
+  set_position(target_position_steps + delta);
 }
 
 
@@ -192,6 +195,23 @@ void loop() {
           long target;
           memcpy(&target, &serial_buffer[0], 4);
           set_position(target);
+          send_OK();
+        } else {
+          send_ERROR();
+        }
+
+        break;
+
+
+      case INCREMENT_STEPS:
+
+        // Set the position in steps
+
+        bytesRead = Serial.readBytes(serial_buffer, 4);
+        if (bytesRead == 4) {
+          long delta;
+          memcpy(&delta, &serial_buffer[0], 4);
+          increment_position(delta);
           send_OK();
         } else {
           send_ERROR();

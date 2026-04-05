@@ -101,7 +101,9 @@ class DummySerial:
         self.byte_queue: bytearray = bytearray()
 
     def write(self, msg: bytes):
-        self.logger.info(msg)
+        """ Stuff that happens on all dummy serial writes """
+        # self.logger.info(msg)
+
 
     @property
     def in_waiting(self) -> int:
@@ -170,6 +172,9 @@ class DummyMotorSerial(DummySerial):
                 self._enqueue(msg)
 
             case MotorMessageType.GOTO_STEPS:
+                self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
+
+            case MotorMessageType.INCREMENT_STEPS:
                 self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
 
             case _:

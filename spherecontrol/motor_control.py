@@ -16,7 +16,7 @@ class MotorControlPause:
     def __enter__(self):
         self.motor_control.position_update_stop.set()
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
         self.motor_control.schedule_position_updates(
             self.motor_control._position_update_callback)
 
@@ -25,7 +25,7 @@ class Empty:
     def __enter__(self):
         pass
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
         pass
 
 class MotorControl:
@@ -69,6 +69,8 @@ class MotorControl:
             return MotorControlPause(self)
 
     def goto_steps(self, target: int):
+        self.logger.info(f"Request position of {target} steps")
+
         msg = bytes([MotorMessageType.GOTO_STEPS.value]) + target.to_bytes(4, byteorder='little', signed=True)
         self.serial.write(msg)
 
@@ -79,8 +81,29 @@ class MotorControl:
             self.logger.error("Timeout")
 
         if response_type == MotorMessageType.SERIAL_SUCCESS.value:
-            # OK
-            pass
+            self.logger.info("OK")
+
+        elif response_type == MotorMessageType.SERIAL_ERROR.value:
+            self.logger.error("Serial error")
+
+        else:
+            self.logger.error("Unknown response")
+
+
+    def increment_steps(self, delta: int):
+        self.logger.info(f"Request position increment of {delta} steps")
+
+        msg = bytes([MotorMessageType.INCREMENT_STEPS.value]) + delta.to_bytes(4, byteorder='little', signed=True)
+        self.serial.write(msg)
+
+        data = self.serial.read(1)
+        response_type = int(data[0])
+
+        if len(data) != 1:
+            self.logger.error("Timeout")
+
+        if response_type == MotorMessageType.SERIAL_SUCCESS.value:
+            self.logger.info("OK")
 
         elif response_type == MotorMessageType.SERIAL_ERROR.value:
             self.logger.error("Serial error")
@@ -134,9 +157,6 @@ class MotorControl:
             message_type = data
 
         self.logger.error(f"Received incorrect response ({message_type})")
-
-    def increment_steps(self, steps):
-        pass
 
     def move(self, position_encoder):
         """ Move to the encoder position specified"""

@@ -1,4 +1,5 @@
 """ Combined interface, runs Qt window, an HTTP server, and writes to serial """
+import logging
 import threading
 
 from PySide6.QtCore import QSize
@@ -48,12 +49,21 @@ class Nexus:
         self.stage_control = MotorControl(serial_object=self.devices.stage_serial, motor_type="Stage")
         self.stage_control.schedule_position_updates(self.update_stage_state)
 
+        self.sphere_control = MotorControl(serial_object=self.devices.sphere_serial, motor_type="Sphere")
+        self.sphere_control.schedule_position_updates(self.update_sphere_state)
+
         # Wire controls
+        ## Light test
         self.control_panel.sequence_light_test.connect(self.start_sequence_light_test)
         self.control_panel.axis_light_test.connect(self.start_axis_light_test)
         self.control_panel.rainbow_light_test.connect(self.start_rainbow_light_test)
         self.control_panel.full_light_test.connect(self.start_full_light_test)
 
+        ## Motor control
+        self.control_panel.pages[Page.MAIN].stage_increment.increment_requested.connect(self.on_stage_increment)
+        self.control_panel.pages[Page.MAIN].sphere_increment.increment_requested.connect(self.on_sphere_increment)
+
+        ## Misc
         self.control_panel.home.connect(self.start_home)
         self.control_panel.imaging.connect(self.start_imaging_position)
         self.control_panel.stop_current.connect(self.stop)
@@ -65,6 +75,11 @@ class Nexus:
         self.control_panel.pages[Page.MAIN].stage_axis_encoder.setText(str(encoder))
         self.control_panel.pages[Page.MAIN].stage_axis_steps.setText(str(steps))
         self.control_panel.pages[Page.MAIN].stage_axis_moving.setText("Moving" if moving else "")
+
+    def update_sphere_state(self, moving: bool, encoder: int, steps: int):
+        self.control_panel.pages[Page.MAIN].sphere_axis_encoder.setText(str(encoder))
+        self.control_panel.pages[Page.MAIN].sphere_axis_steps.setText(str(steps))
+        self.control_panel.pages[Page.MAIN].sphere_axis_moving.setText("Moving" if moving else "")
 
     def lights_off(self):
         self.send_to_lights_and_server(bytes([LightMessageType.ALL_OFF.value]))
@@ -78,6 +93,18 @@ class Nexus:
         self._stop_event = sequencer.run(
             self.send_to_lights_and_server, dt=0.25,
             on_stop=self.lights_off)
+
+    def on_stage_increment(self, increment: int):
+        self.increment(self.stage_control, increment)
+
+    def on_sphere_increment(self, increment: int):
+        self.increment(self.sphere_control, increment)
+
+    @staticmethod
+    def increment(motor_control: MotorControl, increment: int):
+        with motor_control.paused():
+            motor_control.increment_steps(increment)
+
 
 
     def start_full_light_test(self):
@@ -116,4 +143,9 @@ class Nexus:
         self.control_panel.set_stopped()
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,  # <- this is the key line
+        format="[%(levelname)s] %(asctime)s, %(name)s: %(message)s"
+    )
+
     nexus = Nexus(True)

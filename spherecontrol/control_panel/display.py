@@ -13,19 +13,61 @@ class NavigationState(Enum):
     TEST_RUNNING = "running"
 
 class QRightLabel(QLabel):
+    """ Helper label, right aligned """
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setAlignment(Qt.AlignRight)
 
-
 class QCentreLabel(QLabel):
+    """ Helper label, centred """
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setAlignment(Qt.AlignCenter)
 
+
+class ManualMove(QWidget):
+
+    increment_requested = Signal(int)
+
+    def _add_increment_button(self, amount: int):
+        this = self
+
+        def callback():
+            this.increment_requested.emit(amount)
+
+        button = QPushButton(str(amount))
+        button.clicked.connect(callback)
+        self.layout.addWidget(button)
+
+    def __init__(self, name: str, parent=None):
+        super().__init__(parent)
+
+        self.layout = QHBoxLayout()
+
+        self.layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+
+        label = QCentreLabel(name)
+        self.layout.addWidget(label)
+
+        self._add_increment_button(-1000)
+        self._add_increment_button(-100)
+        self._add_increment_button(-10)
+        #self._add_increment_button(-1)
+        #self._add_increment_button(1)
+        self._add_increment_button(10)
+        self._add_increment_button(100)
+        self._add_increment_button(1000)
+
+        self.layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+
+        self.setLayout(self.layout)
+
+
+
 class MainPage(QWidget):
+    """ Main page of the controller """
     go_to_settings = Signal()
     stop = Signal()
 
@@ -69,6 +111,11 @@ class MainPage(QWidget):
         self.data_layout.addWidget(QRightLabel("Lights"), 3, 0)
         self.data_layout.addWidget(self.lights, 3, 1)
 
+        # Positioning bars
+
+        self.stage_increment = ManualMove("Stage")
+        self.sphere_increment = ManualMove("Sphere")
+
         # Navigation Bar
 
         self.manual_label = QLabel("")
@@ -85,7 +132,10 @@ class MainPage(QWidget):
 
         # Put things in place
 
+        self.base_layout.addSpacerItem(QSpacerItem(0,0,QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.base_layout.addWidget(self.data_widget)
+        self.base_layout.addWidget(self.stage_increment)
+        self.base_layout.addWidget(self.sphere_increment)
         self.base_layout.addSpacerItem(QSpacerItem(0,0,QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.base_layout.addWidget(self.navigation_widget)
 
@@ -109,7 +159,6 @@ class MainPage(QWidget):
 
     def set_stopped(self):
         self.set_navigation_state(NavigationState.NORMAL)
-
 
 class SettingsPage(QWidget):
 
