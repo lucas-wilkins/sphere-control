@@ -1,3 +1,4 @@
+#include <SPI.h>
 #include "MotorMessages.h"
 
 #define IS_STAGE
@@ -6,9 +7,11 @@
 #define ENCODER_STEPS_PER_REVOLUTION 4096
 #define GEAR_RATIO 5
 
-#define STEP_PIN 2
-#define DIR_PIN 3
-#define STEP_DELAY 10
+#define STEP_PIN 3
+#define DIR_PIN 2
+#define STEP_DELAY 100
+
+/* Serial communication stuff */
 
 #ifdef IS_STAGE
   #define MOTOR_ID STAGE_MOTOR_ID
@@ -17,6 +20,22 @@
 #endif
 
 #define BUFFER_SIZE 128
+
+/* AMT Communication constants */
+
+/* Pins for SPI
+ *
+ * MISO  GP16 (green)
+ * CS    GP17 (yellow)
+ * SCK   GP18 (orange)
+ * MOSI  GP19 (white)
+ */
+#define ENCODER_CS      17
+#define AMT22_NOP       0x00
+#define AMT22_ZERO      0x70
+#define AMT22_TURNS     0xA0
+#define RESOLUTION      12
+#define AMT_SPI_DELAY   3
 
 /*
  *  State variables
@@ -148,6 +167,46 @@ void increment_position(long delta) {
   set_position(target_position_steps + delta);
 }
 
+/*
+ * Checksums from the examples
+ */
+bool verifyChecksumSPI(uint16_t message)
+{
+  //checksum is invert of XOR of bits, so start with 0b11, so things end up inverted
+  uint16_t checksum = 0x3;
+  for(int i = 0; i < 14; i += 2)
+  {
+    checksum ^= (message >> i) & 0x3;
+  }
+  return checksum == (message >> 14);
+}
+
+void readSPI() {
+
+  //set the CS signal to low
+  // delayMicroseconds(AMT_SPI_DELAY);
+
+  //read the two bytes for position from the encoder, starting with the high byte
+  uint16_t encoderPosition = SPI.transfer(AMT22_NOP) << 8; //shift up 8 bits because this is the high byte
+  delayMicroseconds(AMT_SPI_DELAY);
+  encoderPosition |= SPI.transfer(AMT22_NOP); //we do not need a specific command to get the encoder position, just no-op
+
+  //set the CS signal to high
+  // digitalWrite(cs_pin, HIGH);
+
+
+  if (verifyChecksumSPI(encoderPosition)) //position was good, print to serial stream
+  {
+    encoderPosition &= 0x3FFF; //discard upper two checksum bits
+    if (RESOLUTION == 12) encoderPosition = encoderPosition >> 2; //on a 12-bit encoder, the lower two bits will always be zero
+
+    actual_position_encoder = encoderPosition;
+  }
+  else 
+  {
+
+  }
+}
 
 
 /*
@@ -158,18 +217,31 @@ void increment_position(long delta) {
 
 
 void setup() {
+  // Pin Modes
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(AMT_SPI_DELAY, OUTPUT);
+
+  // Serial
   Serial.begin(57600);
 
+  // Move to zero
   digitalWrite(STEP_PIN, LOW);
   set_moving(true);
+
+  // SPI Control
+  SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+  SPI.begin();
+  digitalWrite(ENCODER_CS, LOW); // Set chip select low
 }
 
 
 void loop() {
   // Sensor and serial control loop
+
+  readSPI();
+  delayMicroseconds(50);
 
   if (Serial.available()) {
     byte first_byte = Serial.read();
