@@ -171,6 +171,14 @@ class DummyMotorSerial(DummySerial):
 
                 self._enqueue(msg)
 
+            case MotorMessageType.SET_LIMITS:
+                low = int.from_bytes(msg[1:5], byteorder='little', signed=True)
+                high = int.from_bytes(msg[5:9], byteorder='little', signed=True)
+
+                self.logger.info(f"Set limits to [{low}, {high}]")
+
+                self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
+
             case MotorMessageType.GOTO_STEPS:
                 self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
 

@@ -20,6 +20,7 @@ class MotorMessageType(Enum):
     HOME_DONE = 31
     SET_LIMITS = 35
     QUERY_LIMITS = 36
+    REPORT_LIMITS = 37
     MANUAL_ON = 40
     MANUAL_OFF = 41
     UNKNOWN_REQUEST = 99

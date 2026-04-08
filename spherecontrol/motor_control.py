@@ -164,8 +164,34 @@ class MotorControl:
     def move_steps(self, position_steps):
         """ Move to the step position specified """
 
+    def set_limits(self, low, high):
+        if high <= low:
+            raise ValueError(f"'low' ({low}) should be less than 'high' ({high})")
+
+        msg = (bytes([MotorMessageType.SET_LIMITS.value]) +
+               low.to_bytes(4, byteorder='little', signed=True) +
+               high.to_bytes(4, byteorder='little', signed=True) )
+
+        self.serial.write(msg)
+
+        data = self.serial.read(1)
+        response_type = int(data[0])
+
+        if len(data) != 1:
+            self.logger.error("Timeout")
+
+        if response_type == MotorMessageType.SERIAL_SUCCESS.value:
+            self.logger.info("OK")
+
+        elif response_type == MotorMessageType.SERIAL_ERROR.value:
+            self.logger.error("Serial error")
+
+        else:
+            self.logger.error("Unknown response")
+
     def set_home(self):
-        pass
+        msg = bytes([MotorMessageType.SET_HOME.value])
+        self.serial.write(msg)
 
 
 if __name__ == "__main__":

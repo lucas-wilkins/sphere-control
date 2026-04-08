@@ -5,6 +5,7 @@ import threading
 from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QApplication
 
+from configuration import config
 from control_panel.display import Display, Page
 from firmware.lights.light_messages import LightMessageType
 from graphicsserver import GraphicsServer
@@ -68,6 +69,9 @@ class Nexus:
         self.control_panel.imaging.connect(self.start_imaging_position)
         self.control_panel.stop_current.connect(self.stop)
 
+        # Set up configuration
+        self.sphere_control.set_limits(config.sphere_axis_low, config.sphere_axis_high)
+
         # Start Qt app
         app.exec()
 
@@ -127,7 +131,6 @@ class Nexus:
     def start_sequence_light_test(self):
         self.run_light_test(ChaseSequence(4))
 
-
     def start_home(self):
         pass
 
@@ -148,4 +151,4 @@ if __name__ == "__main__":
         format="[%(levelname)s] %(asctime)s, %(name)s: %(message)s"
     )
 
-    nexus = Nexus(True)
+    nexus = Nexus(False)

@@ -16,6 +16,7 @@
 
 #ifdef IS_STAGE
   #define MOTOR_ID STAGE_MOTOR_ID
+  #define REVERSE_ENCODER
 #else
   #define MOTOR_ID SPHERE_MOTOR_ID
   #define LINEAR
@@ -115,7 +116,13 @@ void send_ID() {
 
 void send_STATE() {
   // Send a message with the position as reported by encoder, and current step position
-  const long encoder = actual_position_encoder;
+  
+  #ifdef REVERSE_ENCODER
+    const long encoder = ENCODER_STEPS_PER_REVOLUTION - actual_position_encoder - 1;
+  #else
+    const long encoder = actual_position_encoder;
+  #endif
+
   const long steps = actual_position_steps;
   
   if (moving) {
