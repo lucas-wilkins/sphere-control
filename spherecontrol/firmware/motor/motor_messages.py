@@ -18,6 +18,8 @@ class MotorMessageType(Enum):
     NOT_MOVING = 26
     SET_HOME = 30
     HOME_DONE = 31
+    SET_LIMITS = 35
+    QUERY_LIMITS = 36
     MANUAL_ON = 40
     MANUAL_OFF = 41
     UNKNOWN_REQUEST = 99

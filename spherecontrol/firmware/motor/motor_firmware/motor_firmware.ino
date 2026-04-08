@@ -1,5 +1,6 @@
 #include <SPI.h>
 #include "MotorMessages.h"
+#include "filter.h"
 
 #define IS_STAGE
 
@@ -17,6 +18,7 @@
   #define MOTOR_ID STAGE_MOTOR_ID
 #else
   #define MOTOR_ID SPHERE_MOTOR_ID
+  #define LINEAR
 #endif
 
 #define BUFFER_SIZE 128
@@ -30,7 +32,7 @@
  * SCK   GP18 (orange)
  * MOSI  GP19 (white)
  */
-#define ENCODER_CS      17
+#define ENCODER_CS_PIN  17
 #define AMT22_NOP       0x00
 #define AMT22_ZERO      0x70
 #define AMT22_TURNS     0xA0
@@ -44,7 +46,10 @@
 // Position variables
 volatile long target_position_steps = 0;
 volatile long actual_position_steps = 0;
-long actual_position_encoder = 0;
+volatile long actual_position_encoder = 0;
+
+long low_limit = -MOTOR_STEPS_PER_REVOLUTION;
+long high_limit = MOTOR_STEPS_PER_REVOLUTION;
 
 volatile bool moving = false; // State variable for whether its moving
 volatile bool lock = false; // Used to prevent motor from stepping
@@ -68,8 +73,12 @@ byte position_response[] = {REPORT_STATE,
                             NOT_MOVING, 
                             0, 0, 0, 0, 
                             0, 0, 0, 0};
+byte limit_response[] = {REPORT_LIMITS,
+                         0, 0, 0, 0,
+                         0, 0, 0, 0};
 
-
+// Filtering
+MedianFilter3 filter = MedianFilter3(ENCODER_STEPS_PER_REVOLUTION);
 
 
 void set_moving(bool is_moving) {
@@ -81,7 +90,6 @@ void set_moving(bool is_moving) {
     digitalWrite(LED_BUILTIN, LOW);
   }
 }
-
 
 void send_OK() {
   // Send acknowledgement
@@ -122,42 +130,64 @@ void send_STATE() {
   Serial.write(position_response, 10);
 }
 
+void send_LIMITS() {
+  // Send current limit values
+  memcpy(&limit_response[1], &low_limit, 4);
+  memcpy(&limit_response[5], &high_limit, 4);
+  
+  Serial.write(limit_response, 9);
+
+}
+
 void set_position(long target_position) {
   // Set the target position
 
 
-  long new_actual = actual_position_steps % MOTOR_STEPS_PER_REVOLUTION;
 
-  long mid = target_position % MOTOR_STEPS_PER_REVOLUTION;
+  #ifdef LINEAR
+
+    long target = maxl(minl(target_position, high_limit), low_limit));
+
+    lock = true;
+    //actual_position_steps = new_actual;
+    target_position_steps = target;
+    lock = false;
+
+  #else
+    long new_actual = actual_position_steps % MOTOR_STEPS_PER_REVOLUTION;
+
+    long mid = target_position % MOTOR_STEPS_PER_REVOLUTION;
+    
+    long low = mid - MOTOR_STEPS_PER_REVOLUTION;
+    long hi = mid + MOTOR_STEPS_PER_REVOLUTION;
+
+    // Relative distance to each
+    long low_dist = labs(low - new_actual);
+    long mid_dist = labs(mid - new_actual);
+    long hi_dist = labs(hi - new_actual);
+
+    // Get the shortest of these
+    long target;
+    if (low_dist < mid_dist) {
+      if (hi_dist < low_dist) {
+        target = hi;
+      } else {
+        target = low;
+      }
+    } else {
+      if (hi_dist < mid_dist) {
+        target = hi;
+      } else {
+        target = mid;
+      }
+    }
+
+    lock = true;
+    actual_position_steps = new_actual;
+    target_position_steps = target;
+    lock = false;
   
-  long low = mid - MOTOR_STEPS_PER_REVOLUTION;
-  long hi = mid + MOTOR_STEPS_PER_REVOLUTION;
-
-  // Relative distance to each
-  long low_dist = labs(low - new_actual);
-  long mid_dist = labs(mid - new_actual);
-  long hi_dist = labs(hi - new_actual);
-
-  // Get the shortest of these
-  long target;
-  if (low_dist < mid_dist) {
-    if (hi_dist < low_dist) {
-      target = hi;
-    } else {
-      target = low;
-    }
-  } else {
-    if (hi_dist < mid_dist) {
-      target = hi;
-    } else {
-      target = mid;
-    }
-  }
-
-  lock = true;
-  actual_position_steps = new_actual;
-  target_position_steps = target;
-  lock = false;
+  #endif
   
   set_moving(true); // Needs to go after the target is set, otherwise
 }
@@ -184,7 +214,8 @@ bool verifyChecksumSPI(uint16_t message)
 void readSPI() {
 
   //set the CS signal to low
-  // delayMicroseconds(AMT_SPI_DELAY);
+  digitalWrite(ENCODER_CS_PIN, LOW);
+  delayMicroseconds(AMT_SPI_DELAY);
 
   //read the two bytes for position from the encoder, starting with the high byte
   uint16_t encoderPosition = SPI.transfer(AMT22_NOP) << 8; //shift up 8 bits because this is the high byte
@@ -192,15 +223,17 @@ void readSPI() {
   encoderPosition |= SPI.transfer(AMT22_NOP); //we do not need a specific command to get the encoder position, just no-op
 
   //set the CS signal to high
-  // digitalWrite(cs_pin, HIGH);
+  digitalWrite(ENCODER_CS_PIN, HIGH);
 
 
   if (verifyChecksumSPI(encoderPosition)) //position was good, print to serial stream
   {
     encoderPosition &= 0x3FFF; //discard upper two checksum bits
-    if (RESOLUTION == 12) encoderPosition = encoderPosition >> 2; //on a 12-bit encoder, the lower two bits will always be zero
+    if (RESOLUTION == 12) {
+      encoderPosition = encoderPosition >> 2; //on a 12-bit encoder, the lower two bits will always be zero
+    }
 
-    actual_position_encoder = encoderPosition;
+    actual_position_encoder = filter.apply(encoderPosition);
   }
   else 
   {
@@ -221,19 +254,19 @@ void setup() {
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(AMT_SPI_DELAY, OUTPUT);
+  pinMode(ENCODER_CS_PIN, OUTPUT);
 
   // Serial
   Serial.begin(57600);
 
   // Move to zero
-  digitalWrite(STEP_PIN, LOW);
+  digitalWrite(STEP_PIN, HIGH);
   set_moving(true);
 
   // SPI Control
-  SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+  SPI.beginTransaction(SPISettings(125000, MSBFIRST, SPI_MODE0));
   SPI.begin();
-  digitalWrite(ENCODER_CS, LOW); // Set chip select low
+  digitalWrite(ENCODER_CS_PIN, LOW); // Set chip select low
 }
 
 
@@ -256,6 +289,25 @@ void loop() {
       case QUERY_STATE:
         send_STATE();
         
+        break;
+
+      case QUERY_LIMITS:
+        send_LIMITS();
+
+        break;
+
+      case SET_LIMITS:
+
+        // Set the limits (measured in steps)
+        bytesRead = Serial.readBytes(serial_buffer, 8);
+        if (bytesRead == 8) {
+          memcpy(&low_limit, &serial_buffer[0], 4);
+          memcpy(&low_limit, &serial_buffer[4], 4);
+          send_OK();
+        } else {
+          send_ERROR();
+        }
+
         break;
 
       case GOTO_STEPS:

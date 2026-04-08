@@ -96,9 +96,9 @@ void setup()
   //SPI.setClockDivider(SPI_CLOCK_DIV64);  // 250 kHz
   //SPI.setClockDivider(SPI_CLOCK_DIV128); // 125 kHz
   
-  SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
-  // SPI.beginTransaction(SPISettings(500000, LSBFIRST, SPI_MODE0));
-
+  SPI.beginTransaction(SPISettings(125000, MSBFIRST, SPI_MODE0));
+  // SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+  
   //start SPI bus
   SPI.begin();
 

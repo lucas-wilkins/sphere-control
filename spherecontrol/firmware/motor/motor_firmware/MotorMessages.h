@@ -13,6 +13,9 @@
 
 #define SET_HOME           30
 #define HOME_DONE          31
+#define SET_LIMITS         35
+#define QUERY_LIMITS       36
+#define REPORT_LIMITS      37
 
 #define MANUAL_ON          40
 #define MANUAL_OFF         41
