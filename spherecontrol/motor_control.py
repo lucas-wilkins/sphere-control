@@ -89,6 +89,10 @@ class MotorControl:
         else:
             self.logger.error("Unknown response")
 
+    def move_to_encoder_position(self):
+        self.get_state()
+
+
 
     def increment_steps(self, delta: int):
         self.logger.info(f"Request position increment of {delta} steps")
@@ -184,7 +188,7 @@ class MotorControl:
             self.logger.info("OK")
 
         elif response_type == MotorMessageType.SERIAL_ERROR.value:
-            self.logger.error("Serial error")
+            self.logger.error(f"Failed to set limits to [{low}, {high}]")
 
         else:
             self.logger.error("Unknown response")

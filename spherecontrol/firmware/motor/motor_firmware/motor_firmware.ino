@@ -2,7 +2,7 @@
 #include "MotorMessages.h"
 #include "filter.h"
 
-//#define IS_STAGE
+// #define IS_STAGE
 
 #define MOTOR_STEPS_PER_REVOLUTION 64000 // 5 x 32 x 400
 #define ENCODER_STEPS_PER_REVOLUTION 4096
@@ -10,16 +10,26 @@
 
 #define STEP_PIN 3
 #define DIR_PIN 2
-#define STEP_DELAY 100
+
+// This is the number of microseconds we expect the motor control call to take
+// 500 cycles at 133MHz is around 4us
+#define ACCELERATION_CONTROL_EXECUTION_CORRECTION_MICROS 0.0
 
 /* Serial communication stuff */
 
 #ifdef IS_STAGE
   #define MOTOR_ID STAGE_MOTOR_ID
   #define REVERSE_ENCODER
+  #define MAX_SPEED_STEPS_PER_SECOND 2e4
+  #define MIN_SPEED_STEPS_PER_SECOND 1e3
+  #define ACCELERATION_STEPS_PER_SECOND_SQ 3e5
 #else
   #define MOTOR_ID SPHERE_MOTOR_ID
   #define LINEAR
+  #define REVERSE_ENCODER
+  #define MAX_SPEED_STEPS_PER_SECOND 2e4
+  #define MIN_SPEED_STEPS_PER_SECOND 1e3
+  #define ACCELERATION_STEPS_PER_SECOND_SQ 3e5
 #endif
 
 #define BUFFER_SIZE 128
@@ -45,15 +55,20 @@
  */
 
 // Position variables
-volatile long target_position_steps = 0;
-volatile long actual_position_steps = 0;
+volatile long currentPosition = 0;
+volatile long targetPosition = 0;
 volatile long actual_position_encoder = 0;
+volatile int velocityIndex = 0;
+
+int maximumVelocityIndex;
+int* velocityTable;
 
 long low_limit = -MOTOR_STEPS_PER_REVOLUTION;
 long high_limit = MOTOR_STEPS_PER_REVOLUTION;
 
 volatile bool moving = false; // State variable for whether its moving
 volatile bool lock = false; // Used to prevent motor from stepping
+volatile bool lock1 = false;
 
 // Communication
 byte serial_buffer[BUFFER_SIZE];
@@ -123,7 +138,7 @@ void send_STATE() {
     const long encoder = actual_position_encoder;
   #endif
 
-  const long steps = actual_position_steps;
+  const long steps = currentPosition;
   
   if (moving) {
     position_response[1] = IS_MOVING;
@@ -149,19 +164,30 @@ void send_LIMITS() {
 void set_position(long target_position) {
   // Set the target position
 
-
-
   #ifdef LINEAR
 
-    long target = max(min(target_position, high_limit), low_limit);
+    //long target = max(min(target_position, high_limit), low_limit); // This doesn't seem to work correctly
+    long target;
+    if (target_position > high_limit) {
+      target = high_limit;
+    } else {
+      if (target < low_limit) {
+        target = low_limit;
+      } else {
+        target = target_position;
+      }
+    }
 
-    lock = true;
-    //actual_position_steps = new_actual;
-    target_position_steps = target;
-    lock = false;
+    writeTransfer(0, target);
 
   #else
-    long new_actual = actual_position_steps % MOTOR_STEPS_PER_REVOLUTION;
+  
+    long actual = currentPosition; // Read current position so the variable doesn't change in this method
+
+    // Get the new actual position, and calculate how much this differs from the previous one, so the other
+    //  loop can update safely
+    long new_actual = currentPosition % MOTOR_STEPS_PER_REVOLUTION;
+    long delta = actual - new_actual;
 
     long mid = target_position % MOTOR_STEPS_PER_REVOLUTION;
     
@@ -189,10 +215,7 @@ void set_position(long target_position) {
       }
     }
 
-    lock = true;
-    actual_position_steps = new_actual;
-    target_position_steps = target;
-    lock = false;
+    writeTransfer(delta, target);
   
   #endif
   
@@ -201,7 +224,7 @@ void set_position(long target_position) {
 
 void increment_position(long delta) {
   // Increment the target position
-  set_position(target_position_steps + delta);
+  set_position(targetPosition + delta);
 }
 
 /*
@@ -257,18 +280,53 @@ void readSPI() {
 
 
 void setup() {
+
   // Pin Modes
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(ENCODER_CS_PIN, OUTPUT);
 
+  digitalWrite(LED_BUILTIN, HIGH);
+
   // Serial
   Serial.begin(57600);
 
-  // Move to zero
-  digitalWrite(STEP_PIN, HIGH);
-  set_moving(true);
+  /*
+   * Data for controlling motor stepping
+   */
+
+  // Parameters
+  double a = ACCELERATION_STEPS_PER_SECOND_SQ * 2;
+  double vMax = MAX_SPEED_STEPS_PER_SECOND * 2;
+  double vMin = MIN_SPEED_STEPS_PER_SECOND * 2;
+  double correction = ACCELERATION_CONTROL_EXECUTION_CORRECTION_MICROS / 2;
+
+  // Calculate things from the table
+
+  const double acceleration_time = (vMax - vMin) / a;
+  maximumVelocityIndex = 0.5*a*acceleration_time*acceleration_time +
+      acceleration_time * vMin + 1;
+
+  velocityTable = new int[maximumVelocityIndex];
+
+  velocityTable[0] = static_cast<int>((1e6 / vMin) - correction);
+
+  const double v02 = vMin*vMin;
+  for (int i = 0; i < maximumVelocityIndex-1; i++)
+  {
+      const double deltaT = (
+          sqrt(v02 + 2 * a * (i+1)) -
+          sqrt(v02 + 2 * a * i)) / a ;
+
+      velocityTable[i+1] = static_cast<int>(1e6 * deltaT - correction);
+  }
+
+  // Initial state
+  currentPosition = 0;
+  targetPosition = 0;
+  velocityIndex = 0;
+
 
   // SPI Control
   SPI.beginTransaction(SPISettings(125000, MSBFIRST, SPI_MODE0));
@@ -276,6 +334,11 @@ void setup() {
   digitalWrite(ENCODER_CS_PIN, LOW); // Set chip select low
 }
 
+/*
+ *
+ *   Interface loop
+ *
+ */
 
 void loop() {
   // Sensor and serial control loop
@@ -308,9 +371,20 @@ void loop() {
         // Set the limits (measured in steps)
         bytesRead = Serial.readBytes(serial_buffer, 8);
         if (bytesRead == 8) {
-          memcpy(&low_limit, &serial_buffer[0], 4);
-          memcpy(&low_limit, &serial_buffer[4], 4);
-          send_OK();
+          long low;
+          long high;
+
+          memcpy(&low, &serial_buffer[0], 4);
+          memcpy(&high, &serial_buffer[4], 4);
+          
+          if (high >= low) {
+            low_limit = low;
+            high_limit = high;
+            send_OK();
+          } else {
+            send_ERROR();
+          }
+
         } else {
           send_ERROR();
         }
@@ -358,36 +432,141 @@ void loop() {
   }
 }
 
-void loop1() {
-  // Motor driver
+/*
+ *   Motor controll stuff
+ */
 
-  if (!lock) { // Don't move while locked, because the state might be inconsistent
+// Callback for forward stepping
+void forwardStep(int microseconds) {
+  digitalWrite(DIR_PIN, HIGH);
+  delayMicroseconds(microseconds);
 
-    if (target_position_steps < actual_position_steps) {
-      // Step down
-      digitalWrite(DIR_PIN, LOW);
-      delayMicroseconds(STEP_DELAY);
+  digitalWrite(STEP_PIN, HIGH);
+  delayMicroseconds(microseconds);
+  digitalWrite(STEP_PIN, LOW);
+}
 
-      digitalWrite(STEP_PIN, HIGH);
-      delayMicroseconds(STEP_DELAY);
-      digitalWrite(STEP_PIN, LOW);
-      
-      actual_position_steps--;
-      
-    } else if (target_position_steps > actual_position_steps) {
-      // Step up
-      digitalWrite(DIR_PIN, HIGH);
-      delayMicroseconds(STEP_DELAY);
-      
-      digitalWrite(STEP_PIN, HIGH);
-      delayMicroseconds(STEP_DELAY);
-      digitalWrite(STEP_PIN, LOW);
-      
-      actual_position_steps++;
+// Callback for backward stepping
+void backwardStep(int microseconds) {
+  digitalWrite(DIR_PIN, LOW);
+  delayMicroseconds(microseconds);
 
-    } else {
-      // Equal, set moving status
-      set_moving(false);
+  digitalWrite(STEP_PIN, HIGH);
+  delayMicroseconds(microseconds);
+  digitalWrite(STEP_PIN, LOW);
+}
+
+void noStep() {
+  set_moving(false);
+}
+
+/*
+ *  These are for safely communicating betwen threads
+ */
+
+long transferDelta = 0;
+long transferTarget = 0;
+volatile int transferLock = 0;
+
+void acquire_lock() {
+    while (__atomic_test_and_set(&transferLock, __ATOMIC_ACQUIRE)) {
+        // spin
     }
-  }
+}
+
+void release_lock() {
+    __atomic_clear(&transferLock, __ATOMIC_RELEASE);
+}
+
+void writeTransfer(long positionDelta, long positionTarget) {
+  
+  acquire_lock();
+
+  transferDelta += positionDelta;
+  transferTarget = positionTarget;
+
+  release_lock();
+
+}
+
+void readTransfer(volatile long* delta, volatile long* target) {
+  
+  acquire_lock();
+
+  *delta += transferDelta;
+  transferDelta = 0;
+  *target = transferTarget;
+
+  release_lock();
+}
+
+/*
+ *
+ *  Main motor driver thread
+ *
+ */
+
+void loop1() {
+
+    readTransfer(&currentPosition, &targetPosition); // Update the position and target position if set in loop
+
+    const int dt = velocityTable[abs(velocityIndex)];
+
+    // Positive overshoot
+    if ((velocityIndex > 0) && (currentPosition + velocityIndex > targetPosition))
+    {
+        velocityIndex -= 1;
+        currentPosition += 1;
+        forwardStep(dt);
+        return;
+    }
+
+    // Negative overshoot
+    if ((velocityIndex < 0) && (currentPosition + velocityIndex < targetPosition))
+    {
+        velocityIndex += 1;
+        currentPosition -= 1;
+        backwardStep(dt);
+        return;
+    }
+
+    // Positive long distance
+    if (currentPosition + velocityIndex < targetPosition)
+    {
+        velocityIndex = std::min(velocityIndex + 1, maximumVelocityIndex - 1);
+        currentPosition += 1;
+        forwardStep(dt);
+        return;
+    }
+
+    // Positive, slow down
+    if ((currentPosition < targetPosition) && (targetPosition <= currentPosition + velocityIndex))
+    {
+        velocityIndex -= 1;
+        currentPosition += 1;
+        forwardStep(dt);
+        return;
+    }
+
+    // Negative long distance
+    if (currentPosition + velocityIndex > targetPosition)
+    {
+        velocityIndex = std::max(velocityIndex - 1, 1-maximumVelocityIndex);
+        currentPosition -= 1;
+        backwardStep(dt);
+        return;
+    }
+
+    // Negative slow down
+    if ((currentPosition > targetPosition) && (targetPosition >= currentPosition + velocityIndex))
+    {
+        velocityIndex += 1;
+        currentPosition -= 1;
+        backwardStep(dt);
+        return;
+    }
+
+    noStep();
+
+
 }
