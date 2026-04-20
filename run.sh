@@ -1,4 +1,4 @@
-source spherecontrol/.venv/bin/activate
+source .venv/bin/activate
 
 export PYTHONPATH="$(pwd)/"
 
