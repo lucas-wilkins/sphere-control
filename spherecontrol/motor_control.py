@@ -192,7 +192,7 @@ class MotorControl:
             elif data[0] == MotorMessageType.NOT_MOVING.value:
                 moving = False
             else:
-                self.logger.error(f"Bad move state ({int(data[0])})")
+                self._handle_bad_response(data)
                 return None
 
             encoder_pos = int.from_bytes(data[1:5], byteorder='little', signed=True)
