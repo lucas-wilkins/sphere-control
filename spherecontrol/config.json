@@ -1,9 +1,13 @@
 {
   "sphere_axis_low": -64000,
   "sphere_axis_high": 64000,
-  "sphere_axis_home_position": 1450,
+  "sphere_axis_home_position": 2700,
   "stage_axis_home_position": 2048,
   "control_server_port": 5555,
   "stage_steps_per_revolution": 64000,
-  "sphere_steps_per_revolution": 64000
+  "sphere_steps_per_revolution": 64000,
+  "stage_encoder_positions_per_revolution": 4096,
+  "sphere_encoder_positions_per_revolution": 4096,
+  "homing_n_steps_during_search": 1,
+  "homing_search_radius_steps": 30
 }

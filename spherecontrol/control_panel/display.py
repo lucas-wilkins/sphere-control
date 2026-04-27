@@ -6,6 +6,8 @@ from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QWidget, QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, \
     QPushButton, QGridLayout, QLabel
 
+from spherecontrol.configuration import config
+
 _default_status = "Ready"
 
 class NavigationState(Enum):
@@ -178,6 +180,7 @@ class SettingsPage(QWidget):
 
         homing = QWidget()
         homing_layout = QHBoxLayout()
+        homing_layout.addWidget(QCentreLabel(f"{config.stage_axis_home_position}, {config.sphere_axis_home_position}"))
         homing_layout.addWidget(self.rough_home)
         homing_layout.addWidget(self.precise_home)
         homing.setLayout(homing_layout)

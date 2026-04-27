@@ -37,7 +37,8 @@ class MotorControl:
                  steps_per_revolution,
                  encoder_positions_per_revolution):
 
-        self.logger = logging.getLogger(f"Motor::{motor_type}")
+        self.motor_id = f"Motor::{motor_type}"
+        self.logger = logging.getLogger(self.motor_id)
         self.serial = serial_object
 
         self._position_update_stop = threading.Event()
@@ -202,6 +203,8 @@ class MotorControl:
         """ Move to the step position specified """
 
     def set_limits(self, low, high):
+        self.logger.info(f"Setting limits to [{low}, {high}]")
+
         if high <= low:
             raise ValueError(f"'low' ({low}) should be less than 'high' ({high})")
 
