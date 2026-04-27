@@ -1,8 +1,11 @@
 import json
+import logging
 import os.path
 from dataclasses import dataclass, asdict
+from importlib import resources
 
 _config_file = "config.json"
+logger = logging.getLogger("Config")
 
 @dataclass
 class Configuration:
@@ -28,7 +31,17 @@ class Configuration:
                 data = json.load(file)
                 return Configuration(**data)
         else:
-            return Configuration()
+
+            logger.warning("Failed to find config file, trying resources...")
+
+            try:
+                string_data = resources.read_text("spherecontrol", "config.json")
+                data = json.loads(string_data)
+                return Configuration(**data)
+
+            except:
+                logger.warning("Resources failed, using default config...")
+                return Configuration()
 
 
     def save(self):
