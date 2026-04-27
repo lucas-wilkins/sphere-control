@@ -98,7 +98,7 @@ class MotorControl:
         else:
             self.logger.error("Unknown response")
 
-    def move_to_encoder_position(self, target_encoder_position, max_attempts = 10):
+    def move_to_encoder_position(self, target_encoder_position, max_attempts = 10, do_log=True):
 
         # Get the current position
         moving = True
@@ -106,11 +106,17 @@ class MotorControl:
         while not moving:
             moving, encoder_pos, _ = self.get_state()
 
+        if do_log:
+            self.logger.info(f"Starting encoder based move at {encoder_pos}")
+
         for i in range(max_attempts):
 
             # Get the number of steps needed to get to the desired motor position
             difference_encoder = target_encoder_position - encoder_pos
             difference_steps = int(difference_encoder * self.steps_per_revolution / self.encoder_positions_per_revolution)
+
+            if do_log:
+                self.logger.info(f"Moving {difference_steps} steps")
 
             # Move that number of steps
             self.increment_steps(difference_steps)
@@ -120,6 +126,9 @@ class MotorControl:
             encoder_pos = 0
             while not moving:
                 moving, encoder_pos, _ = self.get_state()
+
+            if do_log:
+                self.logger.info(f"New encoder position: {encoder_pos}")
 
             if encoder_pos == target_encoder_position:
                 break
