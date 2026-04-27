@@ -18,9 +18,9 @@ class SerialControl:
                  sphere_port ="dummy",
                  lights_port = "dummy"):
 
-        self.lights_serial = DummyLightSerial() if lights_port == "dummy" else serial.Serial(lights_port, BAUD)
-        self.stage_serial = DummyMotorSerial() if stage_port == "dummy" else serial.Serial(stage_port, BAUD)
-        self.sphere_serial = DummyMotorSerial() if sphere_port == "dummy" else serial.Serial(sphere_port, BAUD)
+        self.lights_serial = DummyLightSerial() if lights_port == "dummy" else serial.Serial(lights_port, BAUD, timeout=2)
+        self.stage_serial = DummyMotorSerial() if stage_port == "dummy" else serial.Serial(stage_port, BAUD, timeout=2)
+        self.sphere_serial = DummyMotorSerial() if sphere_port == "dummy" else serial.Serial(sphere_port, BAUD, timeout=2)
 
         self.is_homed = False
 
