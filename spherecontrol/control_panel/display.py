@@ -10,7 +10,7 @@ _default_status = "Ready"
 
 class NavigationState(Enum):
     NORMAL = "normal"
-    TEST_RUNNING = "running"
+    RUNNING = "running"
 
 class QRightLabel(QLabel):
     """ Helper label, right aligned """
@@ -142,10 +142,11 @@ class MainPage(QWidget):
         self.navigation_state = NavigationState.NORMAL
 
     def set_navigation_state(self, state: NavigationState):
+        print("Setting state:", state)
         match state:
             case NavigationState.NORMAL:
                 self.navigation_button.setText("Settings")
-            case NavigationState.TEST_RUNNING:
+            case NavigationState.RUNNING:
                 self.navigation_button.setText("Stop")
         self.navigation_state = state
 
@@ -154,11 +155,8 @@ class MainPage(QWidget):
         match self.navigation_state:
             case NavigationState.NORMAL:
                 self.go_to_settings.emit()
-            case NavigationState.TEST_RUNNING:
+            case NavigationState.RUNNING:
                 self.stop.emit()
-
-    def set_stopped(self):
-        self.set_navigation_state(NavigationState.NORMAL)
 
 class SettingsPage(QWidget):
 
@@ -175,7 +173,15 @@ class SettingsPage(QWidget):
         self.manual_mode = QPushButton("Manual Positioning")
         self.manual_mode.setCheckable(True)
 
-        self.home = QPushButton("Home")
+        self.rough_home = QPushButton("Rough Home")
+        self.precise_home = QPushButton("Precise Home")
+
+        homing = QWidget()
+        homing_layout = QHBoxLayout()
+        homing_layout.addWidget(self.rough_home)
+        homing_layout.addWidget(self.precise_home)
+        homing.setLayout(homing_layout)
+
         self.imaging = QPushButton("Imaging Position")
         self.exit_button = QPushButton("Exit Interface")
 
@@ -202,7 +208,7 @@ class SettingsPage(QWidget):
         #
 
         self.button_layout.addWidget(self.manual_mode, 0, 0)
-        self.button_layout.addWidget(self.home, 1, 0)
+        self.button_layout.addWidget(homing, 1, 0)
         self.button_layout.addWidget(self.imaging, 2, 0)
         self.button_layout.addWidget(light_tests, 3, 0)
         self.button_layout.addWidget(self.exit_button, 5, 0)
@@ -238,7 +244,8 @@ class Display(QMainWindow):
     axis_light_test = Signal()
     rainbow_light_test = Signal()
     full_light_test = Signal()
-    home = Signal()
+    rough_home = Signal()
+    precise_home = Signal()
     imaging = Signal()
     enable_manual_mode = Signal()
     disable_manual_mode = Signal()
@@ -260,7 +267,8 @@ class Display(QMainWindow):
         self.pages[Page.SETTINGS].axis_light_test.clicked.connect(self.on_run_axis_light_test)
         self.pages[Page.SETTINGS].rainbow_light_test.clicked.connect(self.on_run_rainbow_light_test)
         self.pages[Page.SETTINGS].full_light_test.clicked.connect(self.on_run_full_light_test)
-        self.pages[Page.SETTINGS].home.clicked.connect(self.on_run_home)
+        self.pages[Page.SETTINGS].precise_home.clicked.connect(self.on_run_precise_home)
+        self.pages[Page.SETTINGS].rough_home.clicked.connect(self.on_run_rough_home)
         self.pages[Page.SETTINGS].imaging.clicked.connect(self.on_run_imaging)
         self.pages[Page.SETTINGS].manual_mode.clicked.connect(self.on_manual_clicked)
 
@@ -285,7 +293,7 @@ class Display(QMainWindow):
 
     def run_settings_procedure(self):
         self.set_page(Page.MAIN)
-        self.pages[Page.MAIN].set_navigation_state(NavigationState.TEST_RUNNING)
+        self.pages[Page.MAIN].set_navigation_state(NavigationState.RUNNING)
 
     def set_status(self, status: str):
         self.pages[Page.MAIN].status_label.setText(status)
@@ -298,38 +306,44 @@ class Display(QMainWindow):
 
     def on_run_sequence_light_test(self):
         self.set_status("Running sequence light test...")
-        self.sequence_light_test.emit()
         self.run_settings_procedure()
+        self.sequence_light_test.emit()
 
     def on_run_axis_light_test(self):
         self.set_status("Running axis light test...")
-        self.axis_light_test.emit()
         self.run_settings_procedure()
+        self.axis_light_test.emit()
 
     def on_run_rainbow_light_test(self):
         self.set_status("Running rainbow light test...")
-        self.rainbow_light_test.emit()
         self.run_settings_procedure()
+        self.rainbow_light_test.emit()
 
     def on_run_full_light_test(self):
         self.set_status("Running full light test...")
+        self.run_settings_procedure()
         self.full_light_test.emit()
-        self.run_settings_procedure()
 
-    def on_run_home(self):
+    def on_run_precise_home(self):
         self.set_status("Homing...")
-        self.home.emit()
         self.run_settings_procedure()
+        self.precise_home.emit()
+
+    def on_run_rough_home(self):
+        self.set_status("Homing...")
+        self.run_settings_procedure()
+        self.rough_home.emit()
 
     def on_run_imaging(self):
         self.set_status("Positioning...")
-        self.imaging.emit()
         self.run_settings_procedure()
+        self.imaging.emit()
 
     def on_stop_requested(self):
         self.stop_current.emit()
 
     def set_stopped(self):
+        print("setting stopped")
         self.pages[Page.MAIN].set_navigation_state(NavigationState.NORMAL)
         self.set_status(_default_status)
 

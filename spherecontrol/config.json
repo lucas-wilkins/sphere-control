@@ -2,5 +2,8 @@
   "sphere_axis_low": -64000,
   "sphere_axis_high": 64000,
   "sphere_axis_home_position": 1450,
-  "stage_axis_home_position": 2048
+  "stage_axis_home_position": 2048,
+  "control_server_port": 5555,
+  "stage_steps_per_revolution": 64000,
+  "sphere_steps_per_revolution": 64000
 }

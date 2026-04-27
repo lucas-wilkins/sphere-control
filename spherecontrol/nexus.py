@@ -16,6 +16,8 @@ from test_sequences.base_sequence import TestSequenceSeries
 from test_sequences.chase_sequence import ChaseSequence
 from test_sequences.rainbow import Rainbows
 
+from homing import home
+
 
 class Nexus:
     def __init__(self, full_screen: bool=False, widget_size=24):
@@ -47,10 +49,20 @@ class Nexus:
         self.devices = SerialControl.auto_assign()
 
         # Motor control
-        self.stage_control = MotorControl(serial_object=self.devices.stage_serial, motor_type="Stage")
+        self.stage_control = MotorControl(
+            serial_object=self.devices.stage_serial,
+            motor_type="Stage",
+            steps_per_revolution=config.stage_steps_per_revolution,
+            encoder_positions_per_revolution=config.stage_encoder_positions_per_revolution)
+
         self.stage_control.schedule_position_updates(self.update_stage_state)
 
-        self.sphere_control = MotorControl(serial_object=self.devices.sphere_serial, motor_type="Sphere")
+        self.sphere_control = MotorControl(
+            serial_object=self.devices.sphere_serial,
+            motor_type="Sphere",
+            steps_per_revolution=config.sphere_steps_per_revolution,
+            encoder_positions_per_revolution=config.sphere_encoder_positions_per_revolution)
+
         self.sphere_control.schedule_position_updates(self.update_sphere_state)
 
         # Wire controls
@@ -65,7 +77,8 @@ class Nexus:
         self.control_panel.pages[Page.MAIN].sphere_increment.increment_requested.connect(self.on_sphere_increment)
 
         ## Misc
-        self.control_panel.home.connect(self.start_home)
+        self.control_panel.rough_home.connect(self.rough_home)
+        self.control_panel.precise_home.connect(self.precise_home)
         self.control_panel.imaging.connect(self.start_imaging_position)
         self.control_panel.stop_current.connect(self.stop)
 
@@ -131,8 +144,20 @@ class Nexus:
     def start_sequence_light_test(self):
         self.run_light_test(ChaseSequence(4))
 
-    def start_home(self):
+    def precise_home(self):
+        # home(config.sphere_axis_home_position,
+        #      config.homing_n_steps_during_search,
+        #      config.homing_search_radius_steps,
+        #      self.sphere_control.
+        #      )
         pass
+
+    def rough_home(self):
+        self.stage_control.move_to_encoder_position(config.stage_axis_home_position)
+        self.sphere_control.move_to_encoder_position(config.sphere_axis_home_position)
+
+
+        self.control_panel.set_stopped()
 
     def start_imaging_position(self):
         pass

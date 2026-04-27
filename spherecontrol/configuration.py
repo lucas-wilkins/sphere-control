@@ -12,6 +12,13 @@ class Configuration:
     sphere_axis_high: int = 64000
     sphere_axis_home_position: int = 2048
     stage_axis_home_position: int = 2048
+    control_server_port: int = 5555
+    stage_steps_per_revolution: int = 64000
+    sphere_steps_per_revolution: int = 64000
+    stage_encoder_positions_per_revolution: int = 4096
+    sphere_encoder_positions_per_revolution: int = 4096
+    homing_n_steps_during_search: int = 1
+    homing_search_radius_steps: int = 30
 
     @staticmethod
     def load():

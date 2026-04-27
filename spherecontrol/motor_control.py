@@ -31,13 +31,21 @@ class Empty:
 class MotorControl:
     """ Interface for motor stuff """
 
-    def __init__(self, serial_object: serial.Serial, motor_type: str):
+    def __init__(self,
+                 serial_object: serial.Serial,
+                 motor_type: str,
+                 steps_per_revolution,
+                 encoder_positions_per_revolution):
+
         self.logger = logging.getLogger(f"Motor::{motor_type}")
         self.serial = serial_object
 
         self._position_update_stop = threading.Event()
         self._position_update_callback = None
         self._position_update_dt = 0.2
+
+        self.steps_per_revolution = steps_per_revolution
+        self.encoder_positions_per_revolution = encoder_positions_per_revolution
 
     def schedule_position_updates(self, callback: Callable[[bool, int, int], None]):
         """ Get position updates - runs the callback on the data obtained """
@@ -89,10 +97,34 @@ class MotorControl:
         else:
             self.logger.error("Unknown response")
 
-    def move_to_encoder_position(self):
-        self.get_state()
+    def move_to_encoder_position(self, target_encoder_position, max_attempts = 10):
 
+        # Get the current position
+        moving = True
+        encoder_pos = 0
+        while not moving:
+            moving, encoder_pos, _ = self.get_state()
 
+        for i in range(max_attempts):
+
+            # Get the number of steps needed to get to the desired motor position
+            difference_encoder = target_encoder_position - encoder_pos
+            difference_steps = int(difference_encoder * self.steps_per_revolution / self.encoder_positions_per_revolution)
+
+            # Move that number of steps
+            self.increment_steps(difference_steps)
+
+            # Get the current position
+            moving = True
+            encoder_pos = 0
+            while not moving:
+                moving, encoder_pos, _ = self.get_state()
+
+            if encoder_pos == target_encoder_position:
+                break
+
+        else:
+            self.logger.error(f"Failed to reach encoder position after {max_attempts} attempts")
 
     def increment_steps(self, delta: int):
         self.logger.info(f"Request position increment of {delta} steps")
@@ -116,6 +148,7 @@ class MotorControl:
             self.logger.error("Unknown response")
 
     def get_state(self) -> tuple[bool, int, int] | None:
+        """ Get the current state: (moving, encoder, steps)"""
 
         self.serial.write(bytes([MotorMessageType.QUERY_STATE.value]))
 
@@ -144,10 +177,10 @@ class MotorControl:
                 self.logger.error("Bad move state")
                 return None
 
-            value_1 = int.from_bytes(data[1:5], byteorder='little', signed=True)
-            value_2 = int.from_bytes(data[5:], byteorder='little', signed=True)
+            encoder_pos = int.from_bytes(data[1:5], byteorder='little', signed=True)
+            step_pos = int.from_bytes(data[5:], byteorder='little', signed=True)
 
-            return moving, value_1, value_2
+            return moving, encoder_pos, step_pos
 
         else:
             self._report_bad_response(data)
@@ -203,7 +236,7 @@ if __name__ == "__main__":
 
     time.sleep(2)
 
-    stage_motor = MotorControl(serial_comms.stage_serial, "Stage")
+    stage_motor = MotorControl(serial_comms.stage_serial, "Stage", 64000, 4096)
 
     # print(stage_motor.get_position())
 
