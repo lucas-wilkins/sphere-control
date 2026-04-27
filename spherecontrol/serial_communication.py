@@ -155,6 +155,18 @@ class DummyLightSerial(DummySerial):
 
 class DummyMotorSerial(DummySerial):
 
+    def __init__(self):
+        super().__init__()
+
+        self.position = 0
+        self.encoder_position = 3140
+        self.encoder_offset = 3140
+
+    def increment_steps(self, n_steps):
+
+        self.position += n_steps
+        self.encoder_position = (int(self.position * 4096 / 64000) + self.encoder_offset) % 4096
+
     def write(self, msg: bytes):
         super().write(msg)
 
@@ -165,9 +177,9 @@ class DummyMotorSerial(DummySerial):
                 self._enqueue(bytes([MotorMessageType.IDENTIFY.value, MotorMessageType.STAGE_MOTOR_ID.value]))
 
             case MotorMessageType.QUERY_STATE:
-                msg = (bytes([MotorMessageType.REPORT_STATE.value, MotorMessageType.IS_MOVING.value]) +
-                      (123).to_bytes(4, byteorder='little', signed=True) +
-                      (456).to_bytes(4, byteorder='little', signed=True))
+                msg = (bytes([MotorMessageType.REPORT_STATE.value, MotorMessageType.NOT_MOVING.value]) +
+                      self.encoder_position.to_bytes(4, byteorder='little', signed=True) +
+                      self.position.to_bytes(4, byteorder='little', signed=True))
 
                 self._enqueue(msg)
 
@@ -184,6 +196,8 @@ class DummyMotorSerial(DummySerial):
 
             case MotorMessageType.INCREMENT_STEPS:
                 self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
+                steps = int.from_bytes(msg[1:5], byteorder='little', signed=True)
+                self.increment_steps(steps)
 
             case _:
                 self._enqueue(bytes([LightMessageType.UNKNOWN_REQUEST.value]))

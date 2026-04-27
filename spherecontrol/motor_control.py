@@ -103,7 +103,7 @@ class MotorControl:
         # Get the current position
         moving = True
         encoder_pos = 0
-        while not moving:
+        while moving:
             moving, encoder_pos, _ = self.get_state()
 
         if do_log:
@@ -124,7 +124,7 @@ class MotorControl:
             # Get the current position
             moving = True
             encoder_pos = 0
-            while not moving:
+            while moving:
                 moving, encoder_pos, _ = self.get_state()
 
             if do_log:
@@ -136,8 +136,10 @@ class MotorControl:
         else:
             self.logger.error(f"Failed to reach encoder position after {max_attempts} attempts")
 
-    def increment_steps(self, delta: int):
-        self.logger.info(f"Request position increment of {delta} steps")
+    def increment_steps(self, delta: int, do_log=False):
+
+        if do_log:
+            self.logger.info(f"Request position increment of {delta} steps")
 
         msg = bytes([MotorMessageType.INCREMENT_STEPS.value]) + delta.to_bytes(4, byteorder='little', signed=True)
         self.serial.write(msg)
