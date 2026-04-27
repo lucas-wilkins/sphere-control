@@ -104,7 +104,10 @@ class MotorControl:
         moving = True
         encoder_pos = 0
         while moving:
-            moving, encoder_pos, _ = self.get_state()
+            state = self.get_state()
+            if state is not None:
+                moving, encoder_pos, _ = state
+            time.sleep(0.05)
 
         if do_log:
             self.logger.info(f"Starting encoder based move at {encoder_pos}")
@@ -125,7 +128,10 @@ class MotorControl:
             moving = True
             encoder_pos = 0
             while moving:
-                moving, encoder_pos, _ = self.get_state()
+                state = self.get_state()
+                if state is not None:
+                    moving, encoder_pos, _ = state
+                time.sleep(0.05)
 
             if do_log:
                 self.logger.info(f"New encoder position: {encoder_pos}")
@@ -195,17 +201,21 @@ class MotorControl:
             return moving, encoder_pos, step_pos
 
         else:
-            self._report_bad_response(data)
+            self._handle_bad_response(data)
             return None
 
 
-    def _report_bad_response(self, data: bytes):
+    def _handle_bad_response(self, data: bytes):
         try:
             message_type = MotorMessageType(int(data[0]))
         except:
             message_type = data
 
         self.logger.error(f"Received incorrect response ({message_type})")
+
+        # Remove remaining data from input buffer
+        self.serial.flush()
+        self.serial.reset_input_buffer()
 
     def move(self, position_encoder):
         """ Move to the encoder position specified"""

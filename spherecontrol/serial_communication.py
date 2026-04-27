@@ -8,13 +8,7 @@ from serial.tools import list_ports
 from firmware.lights.light_messages import LightMessageType
 from firmware.motor.motor_messages import MotorMessageType
 
-from test_sequences.axis_sequence import AxisSequence
-from test_sequences.base_sequence import TestSequenceSeries
-from test_sequences.chase_sequence import ChaseSequence
-from test_sequences.rainbow import Rainbows
-
 BAUD = 57600
-
 
 
 class SerialControl:
