@@ -195,9 +195,9 @@ class DummyMotorSerial(DummySerial):
                 self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
 
             case MotorMessageType.INCREMENT_STEPS:
-                self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
                 steps = int.from_bytes(msg[1:5], byteorder='little', signed=True)
                 self.increment_steps(steps)
+                self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
 
             case _:
                 self._enqueue(bytes([LightMessageType.UNKNOWN_REQUEST.value]))
