@@ -2,7 +2,7 @@
 #include "MotorMessages.h"
 #include "filter.h"
 
-#define IS_STAGE
+//#define IS_STAGE
 
 #define MOTOR_STEPS_PER_REVOLUTION 64000 // 5 x 32 x 400
 #define ENCODER_STEPS_PER_REVOLUTION 4096
