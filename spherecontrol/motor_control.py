@@ -123,6 +123,7 @@ class MotorControl:
 
             # Move that number of steps
             self.increment_steps(difference_steps)
+            time.sleep(0.05)
 
             # Get the current position
             moving = True
