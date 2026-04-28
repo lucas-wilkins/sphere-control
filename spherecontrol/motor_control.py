@@ -255,6 +255,27 @@ class MotorControl:
         else:
             self.logger.error("Unknown response")
 
+    def get_limits(self) -> tuple[int, int] | None:
+        self.serial.write(bytes([MotorMessageType.QUERY_LIMITS]))
+
+        data = self.serial.read(1)
+        response_type = int(data[0])
+
+        if response_type != MotorMessageType.REPORT_LIMITS.value:
+            self._handle_bad_response(data)
+            return None
+
+        data = self.serial.read(8)
+
+        if len(data) != 8:
+            self._handle_bad_response(data)
+            return None
+
+        lo = int.from_bytes(data[:4], byteorder='little', signed=True)
+        hi = int.from_bytes(data[4:], byteorder='little', signed=True)
+
+        self.logger.info(f"Current limits are [{lo}, {hi}]")
+
     def set_home(self):
         msg = bytes([MotorMessageType.SET_HOME.value])
         self.serial.write(msg)

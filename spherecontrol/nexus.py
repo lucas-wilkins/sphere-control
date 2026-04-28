@@ -85,6 +85,7 @@ class Nexus:
 
         # Set up configuration
         self.sphere_control.set_limits(config.sphere_axis_low, config.sphere_axis_high)
+        self.sphere_control.get_limits()
 
         # Start Qt app
         app.exec()
