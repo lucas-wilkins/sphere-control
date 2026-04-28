@@ -255,6 +255,21 @@ class MotorControl:
         msg = bytes([MotorMessageType.SET_HOME.value])
         self.serial.write(msg)
 
+        data = self.serial.read(1)
+        response_type = int(data[0])
+
+        if len(data) != 1:
+            self.logger.error("Timeout")
+
+        if response_type == MotorMessageType.SERIAL_SUCCESS.value:
+            self.logger.info("OK")
+
+        elif response_type == MotorMessageType.SERIAL_ERROR.value:
+            self.logger.error(f"Failed to set home")
+
+        else:
+            self.logger.error("Unknown response")
+
 
 if __name__ == "__main__":
     serial_comms = SerialControl.auto_assign()
