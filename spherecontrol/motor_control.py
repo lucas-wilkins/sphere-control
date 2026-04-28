@@ -98,7 +98,11 @@ class MotorControl:
         else:
             self.logger.error("Unknown response")
 
-    def move_to_encoder_position(self, target_encoder_position, max_attempts = 10, do_log=True):
+    def move_to_encoder_position(self,
+                                 target_encoder_position: int,
+                                 max_attempts: int = 10,
+                                 do_log=True,
+                                 settle_time_seconds: float=0.0):
 
         # Get the current position
         moving = True
@@ -123,7 +127,7 @@ class MotorControl:
 
             # Move that number of steps
             self.increment_steps(difference_steps)
-            time.sleep(0.05)
+            time.sleep(settle_time_seconds)
 
             # Get the current position
             moving = True

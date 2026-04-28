@@ -154,11 +154,11 @@ class Nexus:
 
     def rough_home(self):
         with self.stage_control.paused():
-            self.stage_control.move_to_encoder_position(config.stage_axis_home_position)
+            self.stage_control.move_to_encoder_position(config.stage_axis_home_position, settle_time_seconds=0.5)
             self.stage_control.set_home()
 
         with self.sphere_control.paused():
-            self.sphere_control.move_to_encoder_position(config.sphere_axis_home_position)
+            self.sphere_control.move_to_encoder_position(config.sphere_axis_home_position, settle_time_seconds=0.5)
             self.sphere_control.set_home()
 
         self.control_panel.set_stopped()
