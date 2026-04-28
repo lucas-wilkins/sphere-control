@@ -222,6 +222,12 @@ void set_position(long target_position) {
   set_moving(true); // Needs to go after the target is set, otherwise
 }
 
+/* Set the current steps to zero */
+void set_home() {
+    // Update requires a delta
+    writeTransfer(-currentPosition, targetPosition);
+}
+
 void increment_position(long delta) {
   // Increment the target position
   set_position(targetPosition + delta);
@@ -424,6 +430,10 @@ void loop() {
 
         break;
 
+      case SET_HOME:
+        set_home();
+        send_OK();
+        break;
 
       default:
         send_UNKNOWN();
