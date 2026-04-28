@@ -1,6 +1,6 @@
 {
-  "sphere_axis_low": -64000,
-  "sphere_axis_high": 64000,
+  "sphere_axis_low": -17000,
+  "sphere_axis_high": 12400,
   "sphere_axis_home_position": 2700,
   "stage_axis_home_position": 2048,
   "control_server_port": 5555,
