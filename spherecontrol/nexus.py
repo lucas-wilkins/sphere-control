@@ -79,6 +79,7 @@ class Nexus:
         ## Misc
         self.control_panel.rough_home.connect(self.rough_home)
         self.control_panel.precise_home.connect(self.precise_home)
+        self.control_panel.origin.connect(self.set_origin)
         self.control_panel.imaging.connect(self.start_imaging_position)
         self.control_panel.stop_current.connect(self.stop)
 

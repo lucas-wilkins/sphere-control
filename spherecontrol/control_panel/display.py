@@ -144,7 +144,7 @@ class MainPage(QWidget):
         self.navigation_state = NavigationState.NORMAL
 
     def set_navigation_state(self, state: NavigationState):
-        print("Setting state:", state)
+        # print("Setting state:", state)
         match state:
             case NavigationState.NORMAL:
                 self.navigation_button.setText("Settings")
@@ -355,7 +355,7 @@ class Display(QMainWindow):
         self.stop_current.emit()
 
     def set_stopped(self):
-        print("setting stopped")
+        # print("setting stopped")
         self.pages[Page.MAIN].set_navigation_state(NavigationState.NORMAL)
         self.set_status(_default_status)
 
