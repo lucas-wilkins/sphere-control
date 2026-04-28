@@ -2,7 +2,7 @@
 #include "MotorMessages.h"
 #include "filter.h"
 
-//#define IS_STAGE
+#define IS_STAGE
 
 #define MOTOR_STEPS_PER_REVOLUTION 64000 // 5 x 32 x 400
 #define ENCODER_STEPS_PER_REVOLUTION 4096
@@ -225,7 +225,7 @@ void set_position(long target_position) {
 /* Set the current steps to zero */
 void set_home() {
     // Update requires a delta
-    writeTransfer(-currentPosition, targetPosition);
+    writeTransfer(-currentPosition, 0);
 }
 
 void increment_position(long delta) {
