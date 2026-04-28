@@ -256,7 +256,7 @@ class MotorControl:
             self.logger.error("Unknown response")
 
     def get_limits(self) -> tuple[int, int] | None:
-        self.serial.write(bytes([MotorMessageType.QUERY_LIMITS]))
+        self.serial.write(bytes([MotorMessageType.QUERY_LIMITS.value]))
 
         data = self.serial.read(1)
         response_type = int(data[0])
