@@ -2,7 +2,7 @@
 #include "MotorMessages.h"
 #include "filter.h"
 
-#define IS_STAGE
+//#define IS_STAGE
 
 #define MOTOR_STEPS_PER_REVOLUTION 64000 // 5 x 32 x 400
 #define ENCODER_STEPS_PER_REVOLUTION 4096
@@ -167,15 +167,14 @@ void set_position(long target_position) {
   #ifdef LINEAR
 
     //long target = max(min(target_position, high_limit), low_limit); // This doesn't seem to work correctly
-    long target;
-    if (target_position > high_limit) {
+    long target = target_position;
+    
+    if (target > high_limit) {
       target = high_limit;
-    } else {
-      if (target < low_limit) {
-        target = low_limit;
-      } else {
-        target = target_position;
-      }
+    }
+
+    if (target < low_limit) {
+      target = low_limit;
     }
 
     writeTransfer(0, target);
