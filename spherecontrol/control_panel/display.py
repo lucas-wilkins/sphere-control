@@ -177,12 +177,14 @@ class SettingsPage(QWidget):
 
         self.rough_home = QPushButton("Rough Home")
         self.precise_home = QPushButton("Precise Home")
+        self.set_origin = QPushButton("Set Origin")
 
         homing = QWidget()
         homing_layout = QHBoxLayout()
         homing_layout.addWidget(QCentreLabel(f"{config.stage_axis_home_position}, {config.sphere_axis_home_position}"))
         homing_layout.addWidget(self.rough_home)
         homing_layout.addWidget(self.precise_home)
+        homing_layout.addWidget(self.set_origin)
         homing.setLayout(homing_layout)
 
         self.imaging = QPushButton("Imaging Position")
@@ -249,6 +251,7 @@ class Display(QMainWindow):
     full_light_test = Signal()
     rough_home = Signal()
     precise_home = Signal()
+    origin = Signal()
     imaging = Signal()
     enable_manual_mode = Signal()
     disable_manual_mode = Signal()
@@ -271,6 +274,7 @@ class Display(QMainWindow):
         self.pages[Page.SETTINGS].rainbow_light_test.clicked.connect(self.on_run_rainbow_light_test)
         self.pages[Page.SETTINGS].full_light_test.clicked.connect(self.on_run_full_light_test)
         self.pages[Page.SETTINGS].precise_home.clicked.connect(self.on_run_precise_home)
+        self.pages[Page.SETTINGS].set_origin.clicked.connect(self.on_run_set_origin)
         self.pages[Page.SETTINGS].rough_home.clicked.connect(self.on_run_rough_home)
         self.pages[Page.SETTINGS].imaging.clicked.connect(self.on_run_imaging)
         self.pages[Page.SETTINGS].manual_mode.clicked.connect(self.on_manual_clicked)
@@ -336,6 +340,11 @@ class Display(QMainWindow):
         self.set_status("Homing...")
         self.run_settings_procedure()
         self.rough_home.emit()
+
+    def on_run_set_origin(self):
+        self.set_status("Setting...")
+        self.run_settings_procedure()
+        self.origin.emit()
 
     def on_run_imaging(self):
         self.set_status("Positioning...")
