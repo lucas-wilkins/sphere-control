@@ -2,7 +2,7 @@
 #include "MotorMessages.h"
 #include "filter.h"
 
-// #define IS_STAGE
+#define IS_STAGE
 
 #define MOTOR_STEPS_PER_REVOLUTION 64000 // 5 x 32 x 400
 #define ENCODER_STEPS_PER_REVOLUTION 4096
@@ -515,6 +515,15 @@ void loop1() {
     // Positive overshoot
     if ((velocityIndex > 0) && (currentPosition + velocityIndex > targetPosition))
     {
+        // Catches an oscillation problem where v=+-1 at x=target, just don't do the step, 
+        // it will be a bit faster stopping for this one step, but hopefully it doesn't have much impact
+        if (currentPosition == targetPosition && velocityIndex == 1)
+        {
+            velocityIndex = 0;
+            noStep();
+            return;
+        }
+
         velocityIndex -= 1;
         currentPosition += 1;
         forwardStep(dt);
@@ -524,6 +533,14 @@ void loop1() {
     // Negative overshoot
     if ((velocityIndex < 0) && (currentPosition + velocityIndex < targetPosition))
     {
+        // Catches an oscillation problem where v=+-1 at x=target
+        if (currentPosition == targetPosition && velocityIndex == -1)
+        {
+            velocityIndex = 0;
+            noStep();
+            return;
+        }
+
         velocityIndex += 1;
         currentPosition -= 1;
         backwardStep(dt);

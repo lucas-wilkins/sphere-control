@@ -153,9 +153,11 @@ class Nexus:
         pass
 
     def rough_home(self):
-        self.stage_control.move_to_encoder_position(config.stage_axis_home_position)
-        self.sphere_control.move_to_encoder_position(config.sphere_axis_home_position)
+        with self.stage_control.paused():
+            self.stage_control.move_to_encoder_position(config.stage_axis_home_position)
 
+        with self.sphere_control.paused():
+            self.sphere_control.move_to_encoder_position(config.sphere_axis_home_position)
 
         self.control_panel.set_stopped()
 
