@@ -48,3 +48,18 @@ top_data = led_points_and_angles[top_indices, :]
 
 np.save("geometry/bottom_data.npy", bottom_data)
 np.save("geometry/top_data.npy", top_data)
+
+# bottom_indices and top_indices are a mapping from led string index to the positional data,
+#  we want mappings in the other direction too
+
+all_indices = bottom_indices + top_indices
+sequence_mapping = {ind: i for i, ind in enumerate(all_indices)}
+
+for ind in set([i for i in range(162)]).difference(all_indices):
+    sequence_mapping[ind] = None
+
+import pickle
+with open("geometry/index_map.pickle", 'wb') as file:
+    pickle.dump(sequence_mapping, file)
+
+

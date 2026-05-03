@@ -1,7 +1,13 @@
+import numpy as np
+
 from spherecontrol.light_commands import LightCommand
 
 class SamplePosition:
-    def __init__(self, stage: float, sphere: float, lights: LightCommand):
+    def __init__(self,
+                 stage: float,
+                 sphere: float,
+                 lights: LightCommand):
+
         self.stage = stage
         self.sphere = sphere
         self.lights = lights

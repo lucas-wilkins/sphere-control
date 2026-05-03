@@ -22,6 +22,25 @@ class Configuration:
     sphere_encoder_positions_per_revolution: int = 4096
     homing_n_steps_during_search: int = 1
     homing_search_radius_steps: int = 30
+    sphere_home_angle_deg: float = 0.0
+    stage_home_angle_deg: float = 0.0
+
+    @property
+    def sphere_steps_per_encoder_position(self):
+        return self.sphere_steps_per_revolution / self.sphere_encoder_positions_per_revolution
+
+    @property
+    def stage_steps_per_encoder_position(self):
+        return self.stage_steps_per_revolution / self.stage_encoder_positions_per_revolution
+
+    @property
+    def sphere_limits_deg(self):
+        """ Get the limits in degrees """
+        to_deg = 360.0 / self.sphere_steps_per_revolution
+        low = self.sphere_axis_low * to_deg + self.sphere_home_angle_deg
+        high = self.sphere_axis_high * to_deg + self.sphere_home_angle_deg
+
+        return low, high
 
     @staticmethod
     def load():

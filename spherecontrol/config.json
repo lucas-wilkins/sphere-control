@@ -9,5 +9,7 @@
   "stage_encoder_positions_per_revolution": 4096,
   "sphere_encoder_positions_per_revolution": 4096,
   "homing_n_steps_during_search": 1,
-  "homing_search_radius_steps": 30
+  "homing_search_radius_steps": 30,
+  "sphere_home_angle_deg": 0.0,
+  "stage_home_angle_deg": 0.0
 }
