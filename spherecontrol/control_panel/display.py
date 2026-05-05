@@ -236,8 +236,6 @@ class SettingsPage(QWidget):
         self.base_layout.addSpacerItem(QSpacerItem(0,0,QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.base_layout.addWidget(self.navigation_widget)
 
-        self.exit_button.clicked.connect(sys.exit)
-
 
 class Page(Enum):
     MAIN = "main"

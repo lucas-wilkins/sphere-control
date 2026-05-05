@@ -56,6 +56,12 @@ class LightCommand:
     def info_string(self) -> str:
         pass
 
+    def __repr__(self):
+        if self.light_index is not None:
+            return f"LightCommand({self._light_index}, {self._light_color})"
+        else:
+            return "LightCommand(<full sequence>)"
+
 class SingleLight(LightCommand):
     def __init__(self, id: int, color: tuple[int, int, int] | None = None):
 

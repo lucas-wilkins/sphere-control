@@ -98,7 +98,6 @@ class DummySerial:
         """ Stuff that happens on all dummy serial writes """
         # self.logger.info(msg)
 
-
     @property
     def in_waiting(self) -> int:
         return len(self.byte_queue)
@@ -123,6 +122,12 @@ class DummySerial:
 
     def _enqueue(self, msg: bytes):
         self.byte_queue += msg
+
+    def flush(self):
+        pass
+
+    def reset_input_buffer(self):
+        self.byte_queue = bytes([])
 
 class DummyLightSerial(DummySerial):
 
@@ -186,6 +191,12 @@ class DummyMotorSerial(DummySerial):
                 self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
 
             case MotorMessageType.GOTO_STEPS:
+
+                steps = int.from_bytes(msg[1:5], byteorder='little', signed=True)
+
+                self.position = steps
+                self.encoder_position = (int(self.position * 4096 / 64000) + self.encoder_offset) % 4096
+
                 self._enqueue(bytes([MotorMessageType.SERIAL_SUCCESS.value]))
 
             case MotorMessageType.INCREMENT_STEPS:
@@ -195,6 +206,7 @@ class DummyMotorSerial(DummySerial):
 
             case _:
                 self._enqueue(bytes([LightMessageType.UNKNOWN_REQUEST.value]))
+
 
 if __name__ == "__main__":
     serial_coms = SerialControl.auto_assign()

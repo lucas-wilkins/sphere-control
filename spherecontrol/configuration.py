@@ -69,6 +69,7 @@ class Configuration:
         with open(_config_file, 'w') as file:
             json.dump(data, file, indent=2)
 
+
 config = Configuration.load()
 
 if __name__ == "__main__":

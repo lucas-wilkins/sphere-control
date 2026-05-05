@@ -1,10 +1,11 @@
 import logging
 import socket
-import struct
 import time
 from typing import Callable
+import threading
 
 from configuration import config
+
 
 class ControlCommand:
     """ Command to be sent over TCP """
@@ -101,14 +102,14 @@ class ControlServer:
                  stage_callback: Callable[[int], None],
                  sphere_callback: Callable[[int], None],
                  lights_callback: Callable[[bytes], None],
-                 wait_callback: Callable[[], bool]):
+                 is_moving_callback: Callable[[], bool]):
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.stage_callback = stage_callback
         self.sphere_callback = sphere_callback
         self.lights_callback = lights_callback
-        self.wait_callback = wait_callback
+        self.is_moving_callback = is_moving_callback
 
         self.host = "0.0.0.0"
         self.port = config.control_server_port
@@ -117,14 +118,14 @@ class ControlServer:
         self.server.bind((self.host, self.port))
         self.server.listen(1) # Single client
 
-        self.logger.info(f"Control server listening on port {self.port}")
+        self._stop_event: threading.Event | None = None
 
-    def receive_exact(self, size):
+    def receive_exact(self, size, client_socket):
         """Receive exactly `size` bytes."""
         data = b''
 
         while len(data) < size:
-            packet = self.server.recv(size - len(data))
+            packet = client_socket.recv(size - len(data))
 
             if not packet:
                 return None
@@ -133,26 +134,56 @@ class ControlServer:
 
         return data
 
-    def receive_message(self):
+    def receive_message(self, client_socket):
         """ Receive a variable length message"""
 
-        raw_length = self.receive_exact(4)
+        raw_length = self.receive_exact(4, client_socket)
 
         if not raw_length:
             return None
 
         # Get the message length from the bytes
-        message_length = struct.unpack('!I', raw_length)[0]
+        message_length =  int.from_bytes(raw_length, byteorder='little', signed=False)
 
         # Read message body
-        return self.receive_exact(message_length)
+        return self.receive_exact(message_length, client_socket)
+
+    def serve(self):
+        self._stop_event = threading.Event()
+        self._server_thread = threading.Thread(target=self._serve_outer_loop)
+        self._server_thread.start()
+
+    def shutdown(self):
+        if self._stop_event is not None:
+            self.logger.info("Shutting down control server")
+            self._stop_event.set()
+
+    def _serve_outer_loop(self):
+
+        self.server.settimeout(1.0)
+
+        self.logger.info(f"Control server listening on port {self.port}")
+        while not self._stop_event.is_set():
+            try:
+                client_socket, client_address = self.server.accept()
+            except TimeoutError:
+                continue
+
+            self.logger.info(f"Accepted connection from {client_address}")
+            self.handle_client(client_socket, client_address)
+            self.logger.info(f"Control server listening on port {self.port}")
+
+
+        self.logger.info("Control server stopped")
 
     def handle_client(self, client_socket, client_address):
         self.logger.info(f"Connected: {client_address}")
 
+        client_socket.settimeout(1.0)
+
         try:
-            while True:
-                data = self.receive_message()
+            while not self._stop_event.is_set():
+                data = self.receive_message(client_socket)
 
                 if not data:
                     break
@@ -161,7 +192,7 @@ class ControlServer:
                 #client_socket.sendall(b"Message received")
 
         except Exception as e:
-            self.logger.error(f"Error with {client_address}: {e}")
+            self.logger.error(f"Error communicating on {client_address}: {e}")
 
         finally:
             client_socket.close()
@@ -186,13 +217,44 @@ class ControlServer:
             do_wait |= True
 
         if do_wait and command.wait:
-            while not self.wait_callback():
-                time.sleep(0.1)
+            while self.is_moving_callback():
+                time.sleep(0.05)
 
         self.send_done()
 
 if __name__ == "__main__":
-    cc = ControlCommand(1,2,bytes([1,2,3]))
-    encoded = cc.to_bytes()
+
+
+
+    def motor_callback(motor_name: str):
+        logger = logging.getLogger(motor_name)
+        def callback(position):
+            logger.info(f"{motor_name} callback: {position}")
+        return callback
+
+    wait_logger = logging.getLogger("Wait callback")
+    def wait_callback():
+        wait_logger.info("Wait for move")
+        return False
+
+
+    lights_logger = logging.getLogger("Lights callback")
+    def lights_callback(msg: bytes):
+        lights_logger.info(msg)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(levelname)s] %(asctime)s, %(name)s: %(message)s"
+    )
+
+    server = ControlServer(
+        stage_callback=motor_callback("Stage"),
+        sphere_callback=motor_callback("Sphere"),
+        lights_callback=lights_callback,
+        is_moving_callback=wait_callback)
+
+    server.serve()
+
+    print("Main thread continues")
 
 

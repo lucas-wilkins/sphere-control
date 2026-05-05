@@ -76,11 +76,6 @@ def spiral_biased_argmin(z: np.ndarray, stage_angles_rad: np.ndarray, last_stage
     smallest_ind = np.argmin(z)
     is_close = np.abs(z - z[smallest_ind]) < tol
 
-    print("zs:", z)
-    print("candidates, z:", z[is_close])
-    print("candidates, angle:", stage_angles_rad[is_close])
-    print()
-
     close_inds = np.arange(len(z), dtype=int)[is_close]
 
     diffs = stage_angles_rad[is_close] - last_stage_angle_rad
@@ -154,7 +149,6 @@ class SpiralPathing(PositionPathing):
                 if not possible:
                     break
 
-                print("Point:", len(path))
                 lowest_possible = spiral_biased_argmin(z[possible], stage[possible], stage[current])
                 current = possible[lowest_possible]
 

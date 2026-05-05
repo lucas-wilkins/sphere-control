@@ -1,5 +1,6 @@
 """ Combined interface, runs Qt window, an HTTP server, and writes to serial """
 import logging
+import sys
 import threading
 
 from PySide6.QtCore import QSize
@@ -7,6 +8,7 @@ from PySide6.QtWidgets import QApplication
 
 from configuration import config
 from control_panel.display import Display, Page
+from control_server import ControlServer
 from firmware.lights.light_messages import LightMessageType
 from graphicsserver import GraphicsServer
 from motor_control import MotorControl
@@ -16,8 +18,6 @@ from test_sequences.base_sequence import TestSequenceSeries
 from test_sequences.chase_sequence import ChaseSequence
 from test_sequences.rainbow import Rainbows
 
-from homing import home
-
 
 class Nexus:
     def __init__(self, full_screen: bool=False, widget_size=24):
@@ -26,9 +26,9 @@ class Nexus:
         self.homed = False
 
         # Window
-        app = QApplication()
+        self.app = QApplication()
 
-        app.setStyleSheet(f"""
+        self.app.setStyleSheet(f"""
         QWidget {{ font-size: {widget_size}px; }}
         QPushButton {{ padding: {widget_size // 2}px {widget_size}px; }}
         """)
@@ -43,6 +43,8 @@ class Nexus:
         # Server
         self.server = GraphicsServer()
         self.server.run_in_thread()
+
+        # Window threading stuff
         self._stop_event: threading.Event | None = None
 
         # Serial
@@ -83,12 +85,23 @@ class Nexus:
         self.control_panel.imaging.connect(self.start_imaging_position)
         self.control_panel.stop_current.connect(self.stop)
 
+        self.control_panel.pages[Page.SETTINGS].exit_button.clicked.connect(self.on_exit_clicked)
+
         # Set up configuration
         self.sphere_control.set_limits(config.sphere_axis_low, config.sphere_axis_high)
         self.sphere_control.get_limits()
 
+        # Set up control server
+        self.control_server = ControlServer(
+            self.stage_control.goto_steps,
+            self.sphere_control.goto_steps,
+            self.send_to_lights_and_server,
+            self.is_moving)
+
+        self.control_server.serve()
+
         # Start Qt app
-        app.exec()
+        self.app.exec()
 
     def update_stage_state(self, moving: bool, encoder: int, steps: int):
         self.control_panel.pages[Page.MAIN].stage_axis_encoder.setText(str(encoder))
@@ -124,7 +137,12 @@ class Nexus:
         with motor_control.paused():
             motor_control.increment_steps(increment)
 
+    def is_moving(self):
+        """ Get whether we are moving """
+        stage_moving, _, _ = self.stage_control.get_state()
+        sphere_moving, _, _ = self.sphere_control.get_state()
 
+        return stage_moving or sphere_moving
 
     def start_full_light_test(self):
         self.run_light_test(TestSequenceSeries(
@@ -187,9 +205,16 @@ class Nexus:
         # TODO Remove later
         self.control_panel.set_stopped()
 
+    def on_exit_clicked(self):
+        """ Do exit """
+        self.control_server.shutdown()
+        self.server.shutdown()
+        self.app.shutdown()
+        sys.exit()
+
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,  # <- this is the key line
+        level=logging.INFO,
         format="[%(levelname)s] %(asctime)s, %(name)s: %(message)s"
     )
 
